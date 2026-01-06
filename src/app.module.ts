@@ -6,6 +6,7 @@ import * as winston from 'winston';
 
 import { AuthModule } from './auth/auth.module';
 import { ScraperModule } from './scraper/scraper.module';
+import { MangaModule } from './manga/manga.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { ScraperModule } from './scraper/scraper.module';
     // Feature modules
     AuthModule,
     ScraperModule,
+    MangaModule,
   ],
 })
 export class AppModule {}

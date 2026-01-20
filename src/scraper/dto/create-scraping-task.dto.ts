@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsUrl, IsOptional, IsObject, IsBoolean } from 'class-validator';
+import { IsUrl, IsOptional, IsObject } from 'class-validator';
 
 export class CreateScrapingTaskDto {
   @ApiProperty({

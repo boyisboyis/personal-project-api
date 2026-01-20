@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Param,
-  Body,
-  UseGuards,
-  Request,
-} from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
@@ -24,10 +16,7 @@ export class ScraperController {
   @ApiOperation({ summary: 'Create a new scraping task' })
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('tasks')
-  async createScrapingTask(
-    @Request() req: any,
-    @Body() createTaskDto: CreateScrapingTaskDto,
-  ) {
+  async createScrapingTask(@Request() req: any, @Body() createTaskDto: CreateScrapingTaskDto) {
     return this.scraperService.createScrapingTask(req.user.id, createTaskDto);
   }
 

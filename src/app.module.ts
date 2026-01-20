@@ -25,7 +25,7 @@ import { MangaModule } from './manga/manga.module';
             winston.format.colorize(),
             winston.format.printf(({ timestamp, level, message, context }) => {
               return `${timestamp} [${context}] ${level}: ${message}`;
-            }),
+            })
           ),
         }),
         new winston.transports.File({

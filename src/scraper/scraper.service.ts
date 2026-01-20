@@ -24,13 +24,10 @@ export class ScraperService {
 
   constructor(
     private puppeteerService: PuppeteerService,
-    private cheerioService: CheerioService,
+    private cheerioService: CheerioService
   ) {}
 
-  async createScrapingTask(
-    userId: string,
-    createTaskDto: CreateScrapingTaskDto,
-  ): Promise<ScrapingTask> {
+  async createScrapingTask(userId: string, createTaskDto: CreateScrapingTaskDto): Promise<ScrapingTask> {
     const task: ScrapingTask = {
       id: Date.now().toString() + Math.random().toString(36).substring(7),
       ...createTaskDto,
@@ -42,17 +39,15 @@ export class ScraperService {
     };
 
     this.tasks.push(task);
-    
+
     // Start scraping in background
     this.executeScrapingTask(task.id);
-    
+
     return task;
   }
 
   async getScrapingTasks(userId: string): Promise<ScrapingTask[]> {
-    return this.tasks
-      .filter(task => task.userId === userId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return this.tasks.filter(task => task.userId === userId).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   async getScrapingTask(taskId: string, userId: string): Promise<ScrapingTask> {
@@ -80,15 +75,9 @@ export class ScraperService {
 
       // Choose scraping method based on config
       if (task.config?.useHeadless) {
-        result = await this.puppeteerService.scrapeWithPuppeteer(
-          task.url, 
-          task.config
-        );
+        result = await this.puppeteerService.scrapeWithPuppeteer(task.url, task.config);
       } else {
-        result = await this.cheerioService.scrapeWithCheerio(
-          task.url, 
-          task.config
-        );
+        result = await this.cheerioService.scrapeWithCheerio(task.url, task.config);
       }
 
       this.tasks[taskIndex].status = 'completed';
@@ -98,7 +87,7 @@ export class ScraperService {
       this.logger.log(`Task ${taskId} completed successfully`);
     } catch (error) {
       this.logger.error(`Task ${taskId} failed: ${error.message}`);
-      
+
       const taskIndex = this.tasks.findIndex(t => t.id === taskId);
       if (taskIndex !== -1) {
         this.tasks[taskIndex].status = 'failed';

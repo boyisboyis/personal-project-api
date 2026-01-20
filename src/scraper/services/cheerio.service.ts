@@ -18,7 +18,7 @@ export class CheerioService {
       });
 
       const $ = cheerio.load(response.data);
-      
+
       let result: any = {
         url,
         timestamp: new Date().toISOString(),
@@ -28,19 +28,19 @@ export class CheerioService {
       // Extract data based on selectors
       if (config.selectors && Array.isArray(config.selectors)) {
         result.data = {};
-        
+
         for (const selector of config.selectors) {
           try {
             const elements = $(selector);
             const texts: string[] = [];
-            
+
             elements.each((i, el) => {
               const text = $(el).text().trim();
               if (text && text.length > 0) {
                 texts.push(text);
               }
             });
-            
+
             result.data[selector] = texts;
           } catch (error) {
             this.logger.warn(`Failed to extract selector ${selector}: ${error.message}`);
@@ -64,19 +64,23 @@ export class CheerioService {
         });
 
         // Extract paragraphs (limit to first 10)
-        $('p').slice(0, 10).each((i, el) => {
-          const text = $(el).text().trim();
-          if (text) result.data.paragraphs.push(text);
-        });
+        $('p')
+          .slice(0, 10)
+          .each((i, el) => {
+            const text = $(el).text().trim();
+            if (text) result.data.paragraphs.push(text);
+          });
 
         // Extract links (limit to first 20)
-        $('a[href]').slice(0, 20).each((i, el) => {
-          const text = $(el).text().trim();
-          const href = $(el).attr('href');
-          if (text && href) {
-            result.data.links.push({ text, href });
-          }
-        });
+        $('a[href]')
+          .slice(0, 20)
+          .each((i, el) => {
+            const text = $(el).text().trim();
+            const href = $(el).attr('href');
+            if (text && href) {
+              result.data.links.push({ text, href });
+            }
+          });
       }
 
       return result;

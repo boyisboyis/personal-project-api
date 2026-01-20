@@ -27,7 +27,7 @@ export class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
     const user: User = {
       id: Date.now().toString() + Math.random().toString(36).substring(7),
       email,

@@ -23,19 +23,14 @@ async function bootstrap() {
       transform: true,
       whitelist: true,
       forbidNonWhitelisted: true,
-    }),
+    })
   );
 
   // Global prefix
   app.setGlobalPrefix('api/v1');
 
   // Swagger documentation
-  const config = new DocumentBuilder()
-    .setTitle('Web Scraping API')
-    .setDescription('API for web scraping operations')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+  const config = new DocumentBuilder().setTitle('Web Scraping API').setDescription('API for web scraping operations').setVersion('1.0').addBearerAuth().build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 

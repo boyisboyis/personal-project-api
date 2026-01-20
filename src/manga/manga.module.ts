@@ -3,6 +3,10 @@ import { ThrottlerModule } from '@nestjs/throttler';
 
 import { MangaController } from './manga.controller';
 import { MangaService } from './manga.service';
+import { MangaAdapterService } from './services/manga-adapter.service';
+import { AdapterRegistry } from './adapters/adapter-registry';
+import { NiceoppaiAdapter } from './adapters/niceoppai-adapter';
+import { DokimoriAdapter } from './adapters/dokimori-adapter';
 
 @Module({
   imports: [
@@ -14,7 +18,7 @@ import { MangaService } from './manga.service';
     ]),
   ],
   controllers: [MangaController],
-  providers: [MangaService],
+  providers: [MangaService, MangaAdapterService, AdapterRegistry, NiceoppaiAdapter, DokimoriAdapter],
   exports: [MangaService],
 })
 export class MangaModule {}

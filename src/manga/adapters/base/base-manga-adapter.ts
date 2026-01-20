@@ -90,27 +90,12 @@ export abstract class BaseMangaAdapter implements MangaScraperAdapter {
 
     const scrapingConfig = { ...this.getDefaultScrapingConfig(), ...config };
     const result = await this.puppeteerService.scrapeMangaList(url, this.websiteKey, scrapingConfig);
-    
+
     if (result.errors.length > 0) {
       this.logger.warn(`Scraping completed with errors:`, result.errors);
     }
 
     return result.manga.slice(0, limit);
-  }
-
-  /**
-   * Scrape single manga details using Puppeteer
-   */
-  protected async scrapeMangaDetailsWithPuppeteer(
-    url: string, 
-    config?: Partial<MangaScrapingConfig>
-  ): Promise<MangaItemDto | null> {
-    if (!this.puppeteerService) {
-      throw new Error('Puppeteer service not initialized');
-    }
-
-    const scrapingConfig = { ...this.getDefaultScrapingConfig(), ...config };
-    return this.puppeteerService.scrapeMangaDetails(url, this.websiteKey, scrapingConfig);
   }
 
   abstract getLatestUpdated(limit?: number): Promise<MangaItemDto[]>;

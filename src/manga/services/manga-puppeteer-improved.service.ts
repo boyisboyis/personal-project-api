@@ -258,58 +258,6 @@ export class MangaPuppeteerService implements OnModuleDestroy {
   }
 
   /**
-   * Scrape manga details from a specific page
-   */
-  async scrapeMangaDetails(url: string, websiteKey: string, config: MangaScrapingConfig = {}): Promise<MangaItemDto | null> {
-    let browser: Browser | null = null;
-    let page: Page | null = null;
-
-    try {
-      this.logger.debug(`[${websiteKey}] Scraping manga details from: ${url}`);
-
-      browser = await this.getBrowser(config);
-      page = await browser.newPage();
-
-      await this.configurePage(page, config);
-
-      await page.goto(url, {
-        waitUntil: 'networkidle0',
-        timeout: config.timeout || 30000,
-      });
-
-      if (config.waitForSelector) {
-        await page.waitForSelector(config.waitForSelector, {
-          timeout: 10000,
-        });
-      }
-
-      // Extract single manga details
-      const mangaDetails = await this.extractSingleMangaDetails(page, url, websiteKey);
-
-      if (mangaDetails) {
-        this.logger.debug(`[${websiteKey}] Successfully scraped details for: ${mangaDetails.title}`);
-      }
-
-      return mangaDetails;
-    } catch (error) {
-      this.logger.error(`[${websiteKey}] Error scraping manga details from ${url}:`, error.message);
-      return null;
-    } finally {
-      if (page) {
-        try {
-          await page.close();
-        } catch (error) {
-          this.logger.warn('Error closing page:', error.message);
-        }
-      }
-
-      if (browser) {
-        this.releaseBrowser(browser);
-      }
-    }
-  }
-
-  /**
    * Extract manga data from page
    */
   private async extractMangaData(page: Page, baseUrl: string, websiteKey: string, limit: number = 10): Promise<MangaItemDto[]> {
@@ -381,42 +329,6 @@ export class MangaPuppeteerService implements OnModuleDestroy {
       },
       websiteKey,
       limit
-    );
-  }
-
-  /**
-   * Extract single manga details
-   */
-  private async extractSingleMangaDetails(page: Page, url: string, websiteKey: string): Promise<MangaItemDto | null> {
-    return await page.evaluate(
-      (siteKey, currentUrl) => {
-        try {
-          // Generic selectors for manga details
-          const titleEl = document.querySelector('h1, .title, .manga-title, [class*="title"]');
-          const authorEl = document.querySelector('.author, .creator, [class*="author"]');
-          const imageEl = document.querySelector('.cover img, .manga-cover img, img[class*="cover"]');
-          const chapterEl = document.querySelector('.chapter, .latest-chapter, [class*="chapter"]');
-
-          const title = titleEl?.textContent?.trim();
-
-          if (!title) return null;
-
-          return {
-            id: `${siteKey}-details-${Date.now()}`,
-            title,
-            author: authorEl?.textContent?.trim(),
-            coverImage: imageEl?.getAttribute('src') || undefined,
-            latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
-            lastUpdated:  new Date().toISOString(),
-            url: currentUrl,
-          };
-        } catch (error) {
-          console.warn('Error extracting manga details:', error);
-          return null;
-        }
-      },
-      websiteKey,
-      url
     );
   }
 }

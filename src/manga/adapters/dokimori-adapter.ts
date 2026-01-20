@@ -75,18 +75,8 @@ export class DokimoriAdapter extends BaseMangaAdapter {
   async getMangaDetails(identifier: string): Promise<MangaItemDto | null> {
     try {
       this.logOperation(`Fetching manga details for: ${identifier}`);
-
-      // Option 1: Use real scraping if identifier is a URL
-      // if (identifier.startsWith('http')) {
-        const scrapedData = await this.scrapeMangaDetailsWithPuppeteer(identifier, {
-          waitForSelector: '.manga-details, .series-info',
-          delay: { min: 400, max: 800 },
-        });
-        if (scrapedData) {
-          this.logOperation(`Successfully scraped details for: ${scrapedData.title}`);
-          return scrapedData;
-        }
-      // }
+      this.logOperation(`Manga details not implemented - returning null`);
+      return null;
 
 
       // // Option 2: Fallback to mock data lookup

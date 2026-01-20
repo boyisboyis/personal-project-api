@@ -76,18 +76,8 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
   async getMangaDetails(identifier: string): Promise<MangaItemDto | null> {
     try {
       this.logOperation(`Fetching manga details for: ${identifier}`);
-
-      // Option 1: Use real scraping if identifier is a URL
-      if (identifier.startsWith('http')) {
-        const scrapedData = await this.scrapeMangaDetailsWithPuppeteer(identifier, {
-          waitForSelector: '.manga-info, .series-details',
-          delay: { min: 500, max: 1000 },
-        });
-        if (scrapedData) {
-          this.logOperation(`Successfully scraped details for: ${scrapedData.title}`);
-          return scrapedData;
-        }
-      }
+      this.logOperation(`Manga details not implemented - returning null`);
+      return null;
     } catch (error) {
       this.handleError('getMangaDetails', error);
     }

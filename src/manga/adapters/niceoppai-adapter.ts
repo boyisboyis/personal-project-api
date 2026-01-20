@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { BaseMangaAdapter } from '@/manga/adapters/base/base-manga-adapter';
 import { MangaItemDto } from '@/manga/dto/last-updated.dto';
-import { MangaPuppeteerService } from '@/manga/services/manga-puppeteer.service';
+import { MangaPuppeteerService } from '@/manga/services/manga-puppeteer-improved.service';
 
 @Injectable()
 export class NiceoppaiAdapter extends BaseMangaAdapter {

@@ -4,7 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { MangaController } from '@/manga/manga.controller';
 import { MangaService } from '@/manga/manga.service';
 import { MangaAdapterService } from '@/manga/services/manga-adapter.service';
-import { MangaPuppeteerService } from '@/manga/services/manga-puppeteer.service';
+import { MangaPuppeteerService } from '@/manga/services/manga-puppeteer-improved.service';
 import { AdapterRegistry } from '@/manga/adapters/adapter-registry';
 import { NiceoppaiAdapter } from '@/manga/adapters/niceoppai-adapter';
 import { DokimoriAdapter } from '@/manga/adapters/dokimori-adapter';

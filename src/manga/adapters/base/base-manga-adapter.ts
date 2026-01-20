@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MangaScraperAdapter } from '@/manga/adapters/base/manga-scraper.interface';
 import { MangaItemDto } from '@/manga/dto/last-updated.dto';
-import { MangaPuppeteerService, MangaScrapingConfig } from '@/manga/services/manga-puppeteer.service';
+import { MangaPuppeteerService, MangaScrapingConfig } from '@/manga/services/manga-puppeteer-improved.service';
 
 @Injectable()
 export abstract class BaseMangaAdapter implements MangaScraperAdapter {

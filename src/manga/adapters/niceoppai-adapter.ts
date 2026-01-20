@@ -85,15 +85,15 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
       this.logOperation(`Fetching latest ${limit} manga`);
       
       // Option 1: Use real scraping (uncomment to enable)
-      // const latestUrl = `${this.websiteUrl}/latest-updates`;
-      // const scrapedData = await this.scrapeMangaListWithPuppeteer(latestUrl, limit, {
-      //   waitForSelector: '.manga-list, .series-list',
-      //   delay: { min: 800, max: 1500 },
-      // });
-      // if (scrapedData.length > 0) {
-      //   this.logOperation(`Successfully scraped ${scrapedData.length} manga from real website`);
-      //   return scrapedData;
-      // }
+      const latestUrl = `${this.websiteUrl}/latest-updates`;
+      const scrapedData = await this.scrapeMangaListWithPuppeteer(latestUrl, limit, {
+        waitForSelector: '.manga-list, .series-list',
+        delay: { min: 800, max: 1500 },
+      });
+      if (scrapedData.length > 0) {
+        this.logOperation(`Successfully scraped ${scrapedData.length} manga from real website`);
+        return scrapedData;
+      }
 
       // Option 2: Fallback to mock data (current implementation)
       await this.simulateNetworkDelay();

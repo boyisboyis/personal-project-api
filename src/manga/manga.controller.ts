@@ -19,7 +19,13 @@ export class MangaController {
     summary: 'Get latest updated manga from a specific website',
     description: 'Returns the 5 most recently updated manga from the specified website',
   })
-  @ApiQuery({ name: 'web', required: true, description: 'Website key to fetch from (required)', example: 'niceoppai' })
+  @ApiQuery({ 
+    name: 'web', 
+    required: true, 
+    description: 'Website key to fetch from (required)', 
+    example: 'niceoppai',
+    enum: ['niceoppai', 'dokimori', 'godmanga']
+  })
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   @Get('last-updated')
   async getLastUpdated(@Query('web') webKey: string): Promise<WebsiteLastUpdatedDto> {
@@ -30,7 +36,13 @@ export class MangaController {
     summary: 'Get latest updated manga from a specific website (path parameter)',
     description: 'Returns the latest updated manga from the specified website using path parameter with pagination support (10 items per page)',
   })
-  @ApiParam({ name: 'web', required: true, description: 'Website key to fetch from', example: 'niceoppai' })
+  @ApiParam({ 
+    name: 'web', 
+    required: true, 
+    description: 'Website key to fetch from', 
+    example: 'niceoppai',
+    enum: ['niceoppai', 'dokimori', 'godmanga']
+  })
   @ApiQuery({ name: 'page', required: false, description: 'Page number (starts from 1)', example: 1, type: 'number' })
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   @Get(':web/last-updated')

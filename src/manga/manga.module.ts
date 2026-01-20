@@ -8,6 +8,8 @@ import { MangaPuppeteerService } from '@/manga/services/manga-puppeteer-improved
 import { AdapterRegistry } from '@/manga/adapters/adapter-registry';
 import { NiceoppaiAdapter } from '@/manga/adapters/niceoppai-adapter';
 import { DokimoriAdapter } from '@/manga/adapters/dokimori-adapter';
+import { HealthController } from '@/common/health/health.controller';
+import { HealthService } from '@/common/health/health.service';
 
 @Module({
   imports: [
@@ -18,8 +20,8 @@ import { DokimoriAdapter } from '@/manga/adapters/dokimori-adapter';
       },
     ]),
   ],
-  controllers: [MangaController],
-  providers: [MangaService, MangaAdapterService, MangaPuppeteerService, AdapterRegistry, NiceoppaiAdapter, DokimoriAdapter],
-  exports: [MangaService],
+  controllers: [MangaController, HealthController],
+  providers: [MangaService, MangaAdapterService, MangaPuppeteerService, AdapterRegistry, NiceoppaiAdapter, DokimoriAdapter, HealthService],
+  exports: [MangaService, AdapterRegistry, HealthService],
 })
 export class MangaModule {}

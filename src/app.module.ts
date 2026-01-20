@@ -4,8 +4,9 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 
-import { AuthModule } from '@/auth/auth.module';
-import { MangaModule } from '@/manga/manga.module';
+import { AuthModule } from './auth/auth.module';
+import { MangaModule } from './manga/manga.module';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { MangaModule } from '@/manga/manga.module';
     ]),
 
     // Feature modules
+    CommonModule,
     AuthModule,
     MangaModule,
   ],

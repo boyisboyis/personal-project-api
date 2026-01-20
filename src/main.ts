@@ -1,9 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { AppModule } from '@/app.module';
+import { AppModule } from './app.module';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
-import { AllExceptionsFilter } from '@/common/filters/all-exceptions.filter';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -13,6 +14,9 @@ async function bootstrap() {
 
   // Global exception filter
   app.useGlobalFilters(new AllExceptionsFilter());
+
+  // Global metrics interceptor
+  app.useGlobalInterceptors(app.get(MetricsInterceptor));
 
   // Enable CORS
   app.enableCors({

@@ -84,7 +84,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
    */
   private async waitForAvailableBrowser(config: MangaScrapingConfig, timeout = 30000): Promise<Browser> {
     const startTime = Date.now();
-    
+
     while (Date.now() - startTime < timeout) {
       const availableBrowser = this.browserPool.find(browser => !this.browserInUse.has(browser));
       if (availableBrowser) {
@@ -96,11 +96,11 @@ export class MangaPuppeteerService implements OnModuleDestroy {
           this.browserPool = this.browserPool.filter(b => b !== availableBrowser);
         }
       }
-      
+
       // Wait a bit before checking again
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    
+
     throw new Error('Timeout waiting for available browser');
   }
 
@@ -136,7 +136,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
    */
   private async closeAllBrowsers(): Promise<void> {
     this.logger.log('Closing all browsers in pool...');
-    
+
     const closePromises = this.browserPool.map(async browser => {
       try {
         await browser.close();
@@ -190,7 +190,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
 
     try {
       this.logger.log(`[${websiteKey}] Starting manga scraping from ${url}`);
-      
+
       browser = await this.getBrowser(config);
       page = await browser.newPage();
 
@@ -213,30 +213,28 @@ export class MangaPuppeteerService implements OnModuleDestroy {
 
       // Add delay
       if (config.delay) {
-        const delay = typeof config.delay === 'number' 
-          ? config.delay 
-          : Math.floor(Math.random() * (config.delay.max - config.delay.min + 1)) + config.delay.min;
+        const delay = typeof config.delay === 'number' ? config.delay : Math.floor(Math.random() * (config.delay.max - config.delay.min + 1)) + config.delay.min;
         await new Promise(resolve => setTimeout(resolve, delay));
       }
-
+      console.log('Page loaded, starting data extraction.', await page.title());
       // Extract manga data
       const manga = await this.extractMangaData(page, url, websiteKey);
       const scrapingTime = Date.now() - startTime;
-      
+
       this.logger.log(`[${websiteKey}] Successfully scraped ${manga.length} manga items in ${scrapingTime}ms`);
-      
+
       return {
         manga,
         totalFound: manga.length,
         scrapingTime,
         errors,
       };
-
     } catch (error) {
+      console.error(`[${websiteKey}] Error during scraping:`, error);
       const scrapingTime = Date.now() - startTime;
       errors.push(error.message);
       this.logger.error(`[${websiteKey}] Error scraping manga list from ${url}:`, error.message);
-      
+
       return {
         manga: [],
         totalFound: 0,
@@ -252,7 +250,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
           this.logger.warn('Error closing page:', error.message);
         }
       }
-      
+
       if (browser) {
         this.releaseBrowser(browser);
       }
@@ -268,7 +266,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
 
     try {
       this.logger.debug(`[${websiteKey}] Scraping manga details from: ${url}`);
-      
+
       browser = await this.getBrowser(config);
       page = await browser.newPage();
 
@@ -287,13 +285,12 @@ export class MangaPuppeteerService implements OnModuleDestroy {
 
       // Extract single manga details
       const mangaDetails = await this.extractSingleMangaDetails(page, url, websiteKey);
-      
+
       if (mangaDetails) {
         this.logger.debug(`[${websiteKey}] Successfully scraped details for: ${mangaDetails.title}`);
       }
-      
-      return mangaDetails;
 
+      return mangaDetails;
     } catch (error) {
       this.logger.error(`[${websiteKey}] Error scraping manga details from ${url}:`, error.message);
       return null;
@@ -305,7 +302,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
           this.logger.warn('Error closing page:', error.message);
         }
       }
-      
+
       if (browser) {
         this.releaseBrowser(browser);
       }
@@ -316,100 +313,110 @@ export class MangaPuppeteerService implements OnModuleDestroy {
    * Extract manga data from page
    */
   private async extractMangaData(page: Page, baseUrl: string, websiteKey: string, limit: number = 10): Promise<MangaItemDto[]> {
-    return await page.evaluate((siteKey, limit) => {
-      const results: MangaItemDto[] = [];
+    console.log('Extracting manga data for website key:', websiteKey);
 
-      // Generic selectors for different websites
-      const selectors = {
-        niceoppai: {
-          container: '.manga-list .manga-item, .series-list .series-item',
-          title: 'h3, .title, .series-title',
-          link: 'a',
-          chapter: '.chapter, .latest-chapter',
-          image: 'img',
-          author: '.author, .creator',
-        },
-        dokimori: {
-          container: '.manga-item, .series-container',
-          title: '.manga-title, .series-name',
-          link: 'a.manga-link',
-          chapter: '.chapter-number',
-          image: '.cover-image img, .thumbnail img',
-          author: '.author-name',
-        },
-        default: {
-          container: '.manga, .series, .item, [class*="manga"], [class*="series"]',
-          title: 'h1, h2, h3, .title, [class*="title"]',
-          link: 'a',
-          chapter: '.chapter, .ch, .episode',
-          image: 'img',
-          author: '.author, .creator, .writer',
-        }
-      };
+    return await page.evaluate(
+      (siteKey, limit) => {
+        const results: MangaItemDto[] = [];
 
-      const config = (selectors as any)[siteKey] || selectors.default;
-      const containers = document.querySelectorAll(config.container);
+        // Generic selectors for different websites
+        const selectors = {
+          niceoppai: {
+            container: '#text-4 div.nde',
+            title: 'a.ttl',
+            link: 'a.ttl',
+            chapter: 'div.det > ul > li:nth-child(1) > a',
+            image: 'div.cvr > a > img',
+            author: 'a.ttl',
+          },
+          dokimori: {
+            container: '#loop-content > div:nth-child(1) > div > div',
+            title: 'div.item-summary.item-display > div > h4 > a',
+            link: 'div.item-summary.item-display > div > h4 > a',
+            chapter: 'div.chapter-item > span.chapter.font-meta > a',
+            image: 'div.item-summary.item-display > div > h4 > a',
+            author: 'div.item-summary.item-display > div > h4 > a',
+          },
+          default: {
+            container: '.manga, .series, .item, [class*="manga"], [class*="series"]',
+            title: 'h1, h2, h3, .title, [class*="title"]',
+            link: 'a',
+            chapter: '.chapter, .ch, .episode',
+            image: 'img',
+            author: '.author, .creator, .writer',
+          },
+        };
+        const config = (selectors as any)[siteKey] || selectors.default;
+        console.log('Using selectors for site:', siteKey, config);
+        const containers = document.querySelectorAll(config.container);
 
-      containers.forEach((container, index) => {
-        try {
-          const titleEl = container.querySelector(config.title);
-          const linkEl = container.querySelector(config.link);
-          const chapterEl = container.querySelector(config.chapter);
-          const imageEl = container.querySelector(config.image);
-          const authorEl = container.querySelector(config.author);
+        containers.forEach((container, index) => {
+          try {
+            const titleEl = container.querySelector(config.title);
+            const linkEl = container.querySelector(config.link);
+            const chapterEl = container.querySelector(config.chapter);
+            const imageEl = container.querySelector(config.image);
+            const authorEl = container.querySelector(config.author);
 
-          const title = titleEl?.textContent?.trim();
-          const url = linkEl?.getAttribute('href');
-          
-          if (title && results.length < limit) {
-            results.push({
-              id: `${siteKey}-${index + 1}`,
-              title,
-              author: authorEl?.textContent?.trim(),
-              coverImage: imageEl?.getAttribute('src'),
-              latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
-              lastUpdated: new Date(),
-              url: url ? (url.startsWith('http') ? url : `${window.location.origin}${url}`) : undefined,
-            });
+            const title = titleEl?.textContent?.trim();
+            const url = linkEl?.getAttribute('href');
+            // console.log(`Extracting chapter text: ${chapterEl?.textContent}`);
+            if (title && results.length < limit) {
+              results.push({
+                id: `${siteKey}-${index + 1}`,
+                title,
+                author: authorEl?.textContent?.trim(),
+                coverImage: imageEl?.getAttribute('src'),
+                latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
+                lastUpdated: new Date(),
+                url: url ? (url.startsWith('http') ? url : `${window.location.origin}${url}`) : undefined,
+              });
+            }
+          } catch (error) {
+            console.warn('Error extracting manga item:', error);
           }
-        } catch (error) {
-          console.warn('Error extracting manga item:', error);
-        }
-      });
+        });
 
-      return results;
-    }, websiteKey, limit);
+        return results;
+      },
+      websiteKey,
+      limit
+    );
   }
 
   /**
    * Extract single manga details
    */
   private async extractSingleMangaDetails(page: Page, url: string, websiteKey: string): Promise<MangaItemDto | null> {
-    return await page.evaluate((siteKey, currentUrl) => {
-      try {
-        // Generic selectors for manga details
-        const titleEl = document.querySelector('h1, .title, .manga-title, [class*="title"]');
-        const authorEl = document.querySelector('.author, .creator, [class*="author"]');
-        const imageEl = document.querySelector('.cover img, .manga-cover img, img[class*="cover"]');
-        const chapterEl = document.querySelector('.chapter, .latest-chapter, [class*="chapter"]');
+    return await page.evaluate(
+      (siteKey, currentUrl) => {
+        try {
+          // Generic selectors for manga details
+          const titleEl = document.querySelector('h1, .title, .manga-title, [class*="title"]');
+          const authorEl = document.querySelector('.author, .creator, [class*="author"]');
+          const imageEl = document.querySelector('.cover img, .manga-cover img, img[class*="cover"]');
+          const chapterEl = document.querySelector('.chapter, .latest-chapter, [class*="chapter"]');
 
-        const title = titleEl?.textContent?.trim();
-        
-        if (!title) return null;
+          const title = titleEl?.textContent?.trim();
 
-        return {
-          id: `${siteKey}-details-${Date.now()}`,
-          title,
-          author: authorEl?.textContent?.trim(),
-          coverImage: imageEl?.getAttribute('src') || undefined,
-          latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
-          lastUpdated: new Date(),
-          url: currentUrl,
-        };
-      } catch (error) {
-        console.warn('Error extracting manga details:', error);
-        return null;
-      }
-    }, websiteKey, url);
+          if (!title) return null;
+
+          return {
+            id: `${siteKey}-details-${Date.now()}`,
+            title,
+            author: authorEl?.textContent?.trim(),
+            coverImage: imageEl?.getAttribute('src') || undefined,
+            latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
+            lastUpdated: new Date(),
+            url: currentUrl,
+          };
+        } catch (error) {
+          console.warn('Error extracting manga details:', error);
+          return null;
+        }
+      },
+      websiteKey,
+      url
+    );
   }
 }

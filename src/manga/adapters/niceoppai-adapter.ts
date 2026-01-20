@@ -85,25 +85,26 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
       this.logOperation(`Fetching latest ${limit} manga`);
       
       // Option 1: Use real scraping (uncomment to enable)
-      const latestUrl = `${this.websiteUrl}/latest-updates`;
+      const latestUrl = `${this.websiteUrl}`;
       const scrapedData = await this.scrapeMangaListWithPuppeteer(latestUrl, limit, {
-        waitForSelector: '.manga-list, .series-list',
+        waitForSelector: '#text-4',
         delay: { min: 800, max: 1500 },
       });
-      if (scrapedData.length > 0) {
-        this.logOperation(`Successfully scraped ${scrapedData.length} manga from real website`);
-        return scrapedData;
-      }
+      // if (scrapedData.length > 0) {
+        // this.logOperation(`Successfully scraped ${scrapedData.length} manga from real website`);
+      // }
+      return scrapedData;
 
       // Option 2: Fallback to mock data (current implementation)
-      await this.simulateNetworkDelay();
+      // await this.simulateNetworkDelay();
 
       // Sort by lastUpdated descending and take the limit
-      const result = this.mockMangaData.sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime()).slice(0, limit);
+      // const result = this.mockMangaData.sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime()).slice(0, limit);
 
-      this.logOperation(`Successfully fetched ${result.length} manga (using mock data)`);
-      return result;
+      // this.logOperation(`Successfully fetched ${result.length} manga (using mock data)`);
+      // return result;
     } catch (error) {
+      console.error('Error in getLatestUpdated:', error);
       this.handleError('getLatestUpdated', error);
     }
   }

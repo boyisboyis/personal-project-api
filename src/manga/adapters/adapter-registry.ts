@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { MangaScraperAdapter } from '@/manga/adapters/base/manga-scraper.interface';
 import { NiceoppaiAdapter } from '@/manga/adapters/niceoppai-adapter';
 import { DokimoriAdapter } from '@/manga/adapters/dokimori-adapter';
+import { GodmangaAdapter } from '@/manga/adapters/godmanga-adapter';
 
 @Injectable()
 export class AdapterRegistry {
@@ -10,7 +11,8 @@ export class AdapterRegistry {
 
   constructor(
     private readonly niceoppaiAdapter: NiceoppaiAdapter,
-    private readonly dokimoriAdapter: DokimoriAdapter
+    private readonly dokimoriAdapter: DokimoriAdapter,
+    private readonly godmangaAdapter: GodmangaAdapter
   ) {
     this.registerAdapters();
   }
@@ -19,6 +21,7 @@ export class AdapterRegistry {
     // Register all available adapters
     this.registerAdapter(this.niceoppaiAdapter);
     this.registerAdapter(this.dokimoriAdapter);
+    this.registerAdapter(this.godmangaAdapter);
 
     this.logger.log(`Registered ${this.adapters.size} manga adapters: ${Array.from(this.adapters.keys()).join(', ')}`);
   }

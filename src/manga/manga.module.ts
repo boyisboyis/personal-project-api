@@ -8,6 +8,7 @@ import { MangaPuppeteerService } from '@/manga/services/manga-puppeteer-improved
 import { AdapterRegistry } from '@/manga/adapters/adapter-registry';
 import { NiceoppaiAdapter } from '@/manga/adapters/niceoppai-adapter';
 import { DokimoriAdapter } from '@/manga/adapters/dokimori-adapter';
+import { GodmangaAdapter } from '@/manga/adapters/godmanga-adapter';
 import { HealthController } from '@/common/health/health.controller';
 import { HealthService } from '@/common/health/health.service';
 
@@ -21,7 +22,7 @@ import { HealthService } from '@/common/health/health.service';
     ]),
   ],
   controllers: [MangaController, HealthController],
-  providers: [MangaService, MangaAdapterService, MangaPuppeteerService, AdapterRegistry, NiceoppaiAdapter, DokimoriAdapter, HealthService],
+  providers: [MangaService, MangaAdapterService, MangaPuppeteerService, AdapterRegistry, NiceoppaiAdapter, DokimoriAdapter, GodmangaAdapter, HealthService],
   exports: [MangaService, AdapterRegistry, HealthService],
 })
 export class MangaModule {}

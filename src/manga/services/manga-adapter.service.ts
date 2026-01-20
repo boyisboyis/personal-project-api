@@ -31,8 +31,7 @@ export class MangaAdapterService {
   /**
    * Get latest updated manga from specific website
    */
-  async getLastUpdatedByWebsite(websiteKey: string, page: number = 1): Promise<WebsiteLastUpdatedDto> {
-    const limit = 10; // Fixed limit of 10 items per page
+  async getLastUpdatedByWebsite(websiteKey: string, page: number = 1, limit: number = 5): Promise<WebsiteLastUpdatedDto> {
     const cacheKey = CacheService.createMangaKey(websiteKey, 'last-updated', page.toString());
     
     // Try cache first

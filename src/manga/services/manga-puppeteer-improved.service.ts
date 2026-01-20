@@ -262,6 +262,12 @@ export class MangaPuppeteerService implements OnModuleDestroy {
    */
   private async extractMangaData(page: Page, baseUrl: string, websiteKey: string, limit: number = 10): Promise<MangaItemDto[]> {
     console.log('Extracting manga data for website key:', websiteKey);
+    page.on('console', async msg => {
+      const msgArgs = msg.args();
+      for (let i = 0; i < msgArgs.length; ++i) {
+        console.log(await msgArgs[i].jsonValue());
+      }
+    });
 
     return await page.evaluate(
       (siteKey, limit) => {
@@ -285,6 +291,15 @@ export class MangaPuppeteerService implements OnModuleDestroy {
             image: 'div.item-summary.item-display > div > h4 > a',
             author: 'div.item-summary.item-display > div > h4 > a',
           },
+          godmanga: {
+            container: 'div.flexbox4-item',
+            title: 'div.flexbox4-side div.title > a',
+            link: 'div.flexbox4-content > a',
+            chapter: 'div.flexbox4-side ul.chapter > li:first-child a',
+            image: 'div.flexbox4-thumb img',
+            author: 'div.flexbox4-side div.title > a',
+            lastUpdated: 'div.flexbox4-side ul.chapter > li:first-child span.date',
+          },
           default: {
             container: '.manga, .series, .item, [class*="manga"], [class*="series"]',
             title: 'h1, h2, h3, .title, [class*="title"]',
@@ -295,20 +310,22 @@ export class MangaPuppeteerService implements OnModuleDestroy {
           },
         };
         const config = (selectors as any)[siteKey] || selectors.default;
-        console.log('Using selectors for site:', siteKey, config);
         const containers = document.querySelectorAll(config.container);
-
+        console.log(`Found ${containers.length} manga containers on the page. ${limit}`);
         containers.forEach((container, index) => {
           try {
             const titleEl = container.querySelector(config.title);
             const linkEl = container.querySelector(config.link);
-            const chapterEl = container.querySelector(config.chapter);
+            let chapterEl = container.querySelector(config.chapter);
             const imageEl = container.querySelector(config.image);
             const authorEl = container.querySelector(config.author);
+            const lastUpdatedEl = config.lastUpdated ? container.querySelector(config.lastUpdated) : undefined;
 
             const title = titleEl?.textContent?.trim();
             const url = linkEl?.getAttribute('href');
-            // console.log(`Extracting chapter text: ${chapterEl?.textContent}`);
+            if (siteKey === 'niceoppai' && chapterEl) {
+              chapterEl.querySelector('span').remove();
+            }
             if (title && results.length < limit) {
               results.push({
                 id: `${siteKey}-${index + 1}`,
@@ -316,7 +333,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
                 author: authorEl?.textContent?.trim(),
                 coverImage: imageEl?.getAttribute('src'),
                 latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
-                lastUpdated: new Date().toISOString(),
+                lastUpdated: lastUpdatedEl?.textContent?.trim() || undefined,
                 url: url ? (url.startsWith('http') ? url : `${window.location.origin}${url}`) : undefined,
               });
             }

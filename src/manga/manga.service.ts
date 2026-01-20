@@ -29,9 +29,9 @@ export class MangaService {
     return this.mangaAdapterService.getSupportedWebsites();
   }
 
-  async getLastUpdated(): Promise<LastUpdatedResponseDto> {
-    this.logger.log('Delegating to MangaAdapterService for last updated manga');
-    return this.mangaAdapterService.getLastUpdated(5);
+  async getLastUpdated(webKey: string) {
+    this.logger.log(`Delegating to MangaAdapterService for last updated manga from ${webKey}`);
+    return this.mangaAdapterService.getLastUpdatedByWebsite(webKey, 5);
   }
 
   // Additional convenience methods using the adapter service

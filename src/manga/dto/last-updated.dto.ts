@@ -35,10 +35,9 @@ export class MangaItemDto {
   latestChapter?: number;
 
   @ApiProperty({
-    example: '2026-01-20T10:00:00.000Z',
     description: 'Last updated timestamp',
   })
-  lastUpdated: Date;
+  lastUpdated: String;
 
   @ApiProperty({
     example: 'https://example.com/manga/one-piece',

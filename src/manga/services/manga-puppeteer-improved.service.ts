@@ -368,7 +368,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
                 author: authorEl?.textContent?.trim(),
                 coverImage: imageEl?.getAttribute('src'),
                 latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
-                lastUpdated: new Date(),
+                lastUpdated: new Date().toISOString(),
                 url: url ? (url.startsWith('http') ? url : `${window.location.origin}${url}`) : undefined,
               });
             }
@@ -407,7 +407,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
             author: authorEl?.textContent?.trim(),
             coverImage: imageEl?.getAttribute('src') || undefined,
             latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
-            lastUpdated: new Date(),
+            lastUpdated:  new Date().toISOString(),
             url: currentUrl,
           };
         } catch (error) {

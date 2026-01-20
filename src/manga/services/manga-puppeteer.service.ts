@@ -32,7 +32,7 @@ export class MangaPuppeteerService {
     const browser = await this.launchBrowser(config);
     try {
       const page = await this.setupPage(browser, config);
-      
+
       // Navigate to the page
       await page.goto(url, {
         waitUntil: 'networkidle2',
@@ -52,7 +52,7 @@ export class MangaPuppeteerService {
 
       // Extract manga data based on website
       const manga = await this.extractMangaData(page, websiteKey);
-      
+
       const scrapingTime = Date.now() - startTime;
       this.logger.log(`[${websiteKey}] Successfully scraped ${manga.length} manga in ${scrapingTime}ms`);
 
@@ -65,7 +65,7 @@ export class MangaPuppeteerService {
     } catch (error) {
       const scrapingTime = Date.now() - startTime;
       this.logger.error(`[${websiteKey}] Scraping failed after ${scrapingTime}ms:`, error.message);
-      
+
       return {
         manga: [],
         totalFound: 0,
@@ -86,7 +86,7 @@ export class MangaPuppeteerService {
     const browser = await this.launchBrowser(config);
     try {
       const page = await this.setupPage(browser, config);
-      
+
       await page.goto(url, {
         waitUntil: 'networkidle2',
         timeout: config.timeout || 30000,
@@ -97,7 +97,7 @@ export class MangaPuppeteerService {
       }
 
       const mangaDetails = await this.extractSingleMangaData(page, websiteKey, url);
-      
+
       this.logger.log(`[${websiteKey}] Successfully scraped manga details: ${mangaDetails?.title || 'Unknown'}`);
       return mangaDetails;
     } catch (error) {
@@ -126,14 +126,13 @@ export class MangaPuppeteerService {
 
   private async setupPage(browser: Browser, config: MangaScrapingConfig): Promise<Page> {
     const page = await browser.newPage();
-    
+
     // Set viewport
     const viewport = config.viewport || { width: 1366, height: 768 };
     await page.setViewport(viewport);
 
     // Set user agent
-    const userAgent = config.userAgent || 
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    const userAgent = config.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
     await page.setUserAgent(userAgent);
 
     // Block unnecessary resources for faster loading
@@ -151,11 +150,18 @@ export class MangaPuppeteerService {
   }
 
   private async extractMangaData(page: Page, websiteKey: string): Promise<MangaItemDto[]> {
+    page.on('console', async msg => {
+      const msgArgs = msg.args();
+      for (let i = 0; i < msgArgs.length; ++i) {
+        console.log(await msgArgs[i].jsonValue());
+      }
+    });
+
     try {
       // Generic extraction logic - can be customized per website
       const mangaData = await page.evaluate((siteKey: string) => {
         const manga: any[] = [];
-        
+
         // Common selectors that might work across manga sites
         const selectors = {
           niceoppai: {
@@ -173,6 +179,7 @@ export class MangaPuppeteerService {
             chapter: '.chapter-info, .latest-chap',
             image: 'img',
             author: '.author-name, .creator',
+            lastUpdated: 'div.chapter-item > span.post-on.font-meta',
           },
           default: {
             container: '.manga, .series, .post, .item, article',
@@ -181,7 +188,7 @@ export class MangaPuppeteerService {
             chapter: '.chapter, .ch, .episode',
             image: 'img',
             author: '.author, .creator, .writer',
-          }
+          },
         };
 
         const config = (selectors as any)[siteKey] || selectors.default;
@@ -194,15 +201,16 @@ export class MangaPuppeteerService {
             const chapterEl = container.querySelector(config.chapter);
             const imageEl = container.querySelector(config.image);
             const authorEl = container.querySelector(config.author);
+            const lastUpdatedEl = container.querySelector(config.lastUpdated);
 
             const title = titleEl?.textContent?.trim();
             const url = linkEl?.getAttribute('href');
-            
+            console.log(`Extracting chapter text: ${lastUpdatedEl?.textContent}`);
             if (title && url) {
               // Extract chapter number from text
               const chapterText = chapterEl?.textContent?.trim() || '';
               const chapterMatch = chapterText.match(/(\d+(?:\.\d+)?)/);
-              
+
               manga.push({
                 id: `${siteKey}-${index + 1}`,
                 title,
@@ -210,7 +218,7 @@ export class MangaPuppeteerService {
                 author: authorEl?.textContent?.trim() || undefined,
                 coverImage: imageEl?.getAttribute('src') || imageEl?.getAttribute('data-src') || undefined,
                 latestChapter: chapterMatch ? parseInt(chapterMatch[1]) : undefined,
-                lastUpdated: new Date().toISOString(),
+                lastUpdated: lastUpdatedEl ? lastUpdatedEl.textContent?.trim() : new Date().toISOString(),
               });
             }
           } catch (err) {
@@ -233,47 +241,50 @@ export class MangaPuppeteerService {
 
   private async extractSingleMangaData(page: Page, websiteKey: string, url: string): Promise<MangaItemDto | null> {
     try {
-      const mangaData = await page.evaluate((siteKey: string, pageUrl: string) => {
-        // Extract detailed manga information from individual manga page
-        const title = document.querySelector('h1, .manga-title, .series-title')?.textContent?.trim();
-        const author = document.querySelector('.author, .manga-author, .creator')?.textContent?.trim();
-        const description = document.querySelector('.description, .summary, .synopsis')?.textContent?.trim();
-        const coverImage = document.querySelector('.manga-cover img, .cover img, .poster img')?.getAttribute('src');
-        
-        // Extract latest chapter
-        const chapterElements = document.querySelectorAll('.chapter, .chapter-list li, .episode');
-        let latestChapter = 0;
-        
-        chapterElements.forEach(el => {
-          const chapterText = el.textContent || '';
-          const chapterMatch = chapterText.match(/(\d+(?:\.\d+)?)/);
-          if (chapterMatch) {
-            const chapterNum = parseFloat(chapterMatch[1]);
-            if (chapterNum > latestChapter) {
-              latestChapter = chapterNum;
+      const mangaData = await page.evaluate(
+        (siteKey: string, pageUrl: string) => {
+          // Extract detailed manga information from individual manga page
+          const title = document.querySelector('h1, .manga-title, .series-title')?.textContent?.trim();
+          const author = document.querySelector('.author, .manga-author, .creator')?.textContent?.trim();
+          const description = document.querySelector('.description, .summary, .synopsis')?.textContent?.trim();
+          const coverImage = document.querySelector('.manga-cover img, .cover img, .poster img')?.getAttribute('src');
+
+          // Extract latest chapter
+          const chapterElements = document.querySelectorAll('.chapter, .chapter-list li, .episode');
+          let latestChapter = 0;
+
+          chapterElements.forEach(el => {
+            const chapterText = el.textContent || '';
+            const chapterMatch = chapterText.match(/(\d+(?:\.\d+)?)/);
+            if (chapterMatch) {
+              const chapterNum = parseFloat(chapterMatch[1]);
+              if (chapterNum > latestChapter) {
+                latestChapter = chapterNum;
+              }
             }
-          }
-        });
+          });
 
-        if (!title) return null;
+          if (!title) return null;
 
-        return {
-          id: `${siteKey}-${Date.now()}`,
-          title,
-          author,
-          description,
-          coverImage: coverImage?.startsWith('http') ? coverImage : (coverImage ? `${window.location.origin}${coverImage}` : undefined),
-          latestChapter: latestChapter > 0 ? latestChapter : undefined,
-          url: pageUrl,
-          lastUpdated: new Date().toISOString(),
-        };
-      }, websiteKey, url);
+          return {
+            id: `${siteKey}-${Date.now()}`,
+            title,
+            author,
+            description,
+            coverImage: coverImage?.startsWith('http') ? coverImage : coverImage ? `${window.location.origin}${coverImage}` : undefined,
+            latestChapter: latestChapter > 0 ? latestChapter : undefined,
+            url: pageUrl,
+            lastUpdated: new Date().toISOString(),
+          };
+        },
+        websiteKey,
+        url
+      );
 
       if (!mangaData) return null;
 
       return {
         ...mangaData,
-        lastUpdated: new Date(mangaData.lastUpdated),
       };
     } catch (error) {
       this.logger.error(`Failed to extract single manga data:`, error.message);

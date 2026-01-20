@@ -14,76 +14,10 @@ export class DokimoriAdapter extends BaseMangaAdapter {
     this.setPuppeteerService(mangaPuppeteerService);
   }
 
-  private readonly mockMangaData: MangaItemDto[] = [
-    {
-      id: '1',
-      title: 'Attack on Titan',
-      author: 'Hajime Isayama',
-      coverImage: 'https://example.com/attack-on-titan.jpg',
-      latestChapter: 139,
-      lastUpdated: new Date('2026-01-20T09:15:00.000Z'),
-      url: `${this.websiteUrl}/manga/attack-on-titan`,
-    },
-    {
-      id: '2',
-      title: 'Naruto',
-      author: 'Masashi Kishimoto',
-      coverImage: 'https://example.com/naruto.jpg',
-      latestChapter: 700,
-      lastUpdated: new Date('2026-01-20T08:45:00.000Z'),
-      url: `${this.websiteUrl}/manga/naruto`,
-    },
-    {
-      id: '3',
-      title: 'Dragon Ball Super',
-      author: 'Akira Toriyama',
-      coverImage: 'https://example.com/dragon-ball-super.jpg',
-      latestChapter: 98,
-      lastUpdated: new Date('2026-01-20T08:15:00.000Z'),
-      url: `${this.websiteUrl}/manga/dragon-ball-super`,
-    },
-    {
-      id: '4',
-      title: 'Death Note',
-      author: 'Tsugumi Ohba',
-      coverImage: 'https://example.com/death-note.jpg',
-      latestChapter: 108,
-      lastUpdated: new Date('2026-01-20T07:45:00.000Z'),
-      url: `${this.websiteUrl}/manga/death-note`,
-    },
-    {
-      id: '5',
-      title: 'Bleach',
-      author: 'Tite Kubo',
-      coverImage: 'https://example.com/bleach.jpg',
-      latestChapter: 686,
-      lastUpdated: new Date('2026-01-20T07:15:00.000Z'),
-      url: `${this.websiteUrl}/manga/bleach`,
-    },
-    {
-      id: '6',
-      title: 'Hunter x Hunter',
-      author: 'Yoshihiro Togashi',
-      coverImage: 'https://example.com/hunter-x-hunter.jpg',
-      latestChapter: 390,
-      lastUpdated: new Date('2026-01-20T06:45:00.000Z'),
-      url: `${this.websiteUrl}/manga/hunter-x-hunter`,
-    },
-    {
-      id: '7',
-      title: 'Fullmetal Alchemist',
-      author: 'Hiromu Arakawa',
-      coverImage: 'https://example.com/fullmetal-alchemist.jpg',
-      latestChapter: 108,
-      lastUpdated: new Date('2026-01-20T06:15:00.000Z'),
-      url: `${this.websiteUrl}/manga/fullmetal-alchemist`,
-    },
-  ];
-
   async getLatestUpdated(limit: number = 5): Promise<MangaItemDto[]> {
     try {
       this.logOperation(`Fetching latest ${limit} manga`);
-      
+
       // Option 1: Use real scraping (uncomment to enable)
       const latestUrl = `${this.websiteUrl}`;
       const scrapedData = await this.scrapeMangaListWithPuppeteer(latestUrl, limit, {
@@ -91,8 +25,8 @@ export class DokimoriAdapter extends BaseMangaAdapter {
         delay: { min: 600, max: 1200 },
       });
       // if (scrapedData.length > 0) {
-        this.logOperation(`Successfully scraped ${scrapedData.length} manga from real website`);
-        return scrapedData;
+      this.logOperation(`Successfully scraped ${scrapedData.length} manga from real website`);
+      return scrapedData;
       // }
 
       // Option 2: Fallback to mock data (current implementation)
@@ -111,28 +45,28 @@ export class DokimoriAdapter extends BaseMangaAdapter {
   async searchManga(query: string, limit: number = 10): Promise<MangaItemDto[]> {
     try {
       this.logOperation(`Searching manga with query: "${query}"`);
-      
+
       // Option 1: Use real scraping (uncomment to enable)
-      // const searchUrl = `${this.websiteUrl}/search?keyword=${encodeURIComponent(query)}`;
-      // const scrapedData = await this.scrapeMangaListWithPuppeteer(searchUrl, limit, {
-      //   waitForSelector: '.search-result, .manga-container',
-      //   delay: { min: 800, max: 1500 },
-      // });
+      const searchUrl = `${this.websiteUrl}/search?keyword=${encodeURIComponent(query)}`;
+      const scrapedData = await this.scrapeMangaListWithPuppeteer(searchUrl, limit, {
+        waitForSelector: '.search-result, .manga-container',
+        delay: { min: 800, max: 1500 },
+      });
       // if (scrapedData.length > 0) {
-      //   this.logOperation(`Found ${scrapedData.length} manga for query: "${query}" (scraped)`);
-      //   return scrapedData;
+      this.logOperation(`Found ${scrapedData.length} manga for query: "${query}" (scraped)`);
+      return scrapedData;
       // }
 
       // Option 2: Fallback to mock data search
-      await this.simulateNetworkDelay(500, 1000);
+      // await this.simulateNetworkDelay(500, 1000);
 
-      const searchTerm = query.toLowerCase();
-      const result = this.mockMangaData
-        .filter(manga => manga.title.toLowerCase().includes(searchTerm) || (manga.author && manga.author.toLowerCase().includes(searchTerm)))
-        .slice(0, limit);
+      // const searchTerm = query.toLowerCase();
+      // const result = this.mockMangaData
+      //   .filter(manga => manga.title.toLowerCase().includes(searchTerm) || (manga.author && manga.author.toLowerCase().includes(searchTerm)))
+      //   .slice(0, limit);
 
-      this.logOperation(`Found ${result.length} manga for query: "${query}" (using mock data)`);
-      return result;
+      // this.logOperation(`Found ${result.length} manga for query: "${query}" (using mock data)`);
+      // return result;
     } catch (error) {
       this.handleError('searchManga', error);
     }
@@ -141,34 +75,36 @@ export class DokimoriAdapter extends BaseMangaAdapter {
   async getMangaDetails(identifier: string): Promise<MangaItemDto | null> {
     try {
       this.logOperation(`Fetching manga details for: ${identifier}`);
-      
+
       // Option 1: Use real scraping if identifier is a URL
-      if (identifier.startsWith('http')) {
-        // const scrapedData = await this.scrapeMangaDetailsWithPuppeteer(identifier, {
-        //   waitForSelector: '.manga-details, .series-info',
-        //   delay: { min: 400, max: 800 },
-        // });
-        // if (scrapedData) {
-        //   this.logOperation(`Successfully scraped details for: ${scrapedData.title}`);
-        //   return scrapedData;
-        // }
-      }
-      
-      // Option 2: Fallback to mock data lookup
-      await this.simulateNetworkDelay(300, 800);
+      // if (identifier.startsWith('http')) {
+        const scrapedData = await this.scrapeMangaDetailsWithPuppeteer(identifier, {
+          waitForSelector: '.manga-details, .series-info',
+          delay: { min: 400, max: 800 },
+        });
+        if (scrapedData) {
+          this.logOperation(`Successfully scraped details for: ${scrapedData.title}`);
+          return scrapedData;
+        }
+      // }
 
-      const result = this.mockMangaData.find(manga => manga.id === identifier || manga.url === identifier);
 
-      if (result) {
-        this.logOperation(`Successfully fetched details for: ${result.title} (using mock data)`);
-      } else {
-        this.logOperation(`Manga not found for identifier: ${identifier}`);
-      }
+      // // Option 2: Fallback to mock data lookup
+      // await this.simulateNetworkDelay(300, 800);
 
-      return result || null;
+      // const result = this.mockMangaData.find(manga => manga.id === identifier || manga.url === identifier);
+
+      // if (result) {
+      //   this.logOperation(`Successfully fetched details for: ${result.title} (using mock data)`);
+      // } else {
+      //   this.logOperation(`Manga not found for identifier: ${identifier}`);
+      // }
+
+      // return result || null;
     } catch (error) {
       this.handleError('getMangaDetails', error);
     }
+    return null;
   }
 
   async isAvailable(): Promise<boolean> {

@@ -31,17 +31,18 @@ export class MangaAdapterService {
   /**
    * Get latest updated manga from specific website
    */
-  async getLastUpdatedByWebsite(websiteKey: string, limit: number = 5): Promise<WebsiteLastUpdatedDto> {
-    const cacheKey = CacheService.createMangaKey(websiteKey, 'last-updated', limit.toString());
+  async getLastUpdatedByWebsite(websiteKey: string, page: number = 1): Promise<WebsiteLastUpdatedDto> {
+    const limit = 10; // Fixed limit of 10 items per page
+    const cacheKey = CacheService.createMangaKey(websiteKey, 'last-updated', page.toString());
     
     // Try cache first
     const cached = this.cacheService.get<WebsiteLastUpdatedDto>(cacheKey);
     if (cached) {
-      this.logger.log(`Returning cached last updated manga for ${websiteKey}`);
+      this.logger.log(`Returning cached last updated manga for ${websiteKey} (page: ${page})`);
       return cached;
     }
 
-    this.logger.log(`Fetching last updated manga from ${websiteKey} (limit: ${limit})`);
+    this.logger.log(`Fetching last updated manga from ${websiteKey} (page: ${page})`);
 
     const adapter = this.adapterRegistry.getAdapter(websiteKey);
     if (!adapter) {

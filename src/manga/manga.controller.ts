@@ -1,9 +1,9 @@
-import { Controller, Get, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, Query, Param } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
 import { MangaService } from '@/manga/manga.service';
-import { WebsiteLastUpdatedDto } from '@/manga/dto/last-updated.dto';
+import { WebsiteLastUpdatedDto, WebsiteLastUpdatedPaginatedDto } from '@/manga/dto/last-updated.dto';
 
 @ApiTags('Manga')
 @Controller('manga')
@@ -24,5 +24,21 @@ export class MangaController {
   @Get('last-updated')
   async getLastUpdated(@Query('web') webKey: string): Promise<WebsiteLastUpdatedDto> {
     return this.mangaService.getLastUpdated(webKey);
+  }
+
+  @ApiOperation({
+    summary: 'Get latest updated manga from a specific website (path parameter)',
+    description: 'Returns the latest updated manga from the specified website using path parameter with pagination support (10 items per page)',
+  })
+  @ApiParam({ name: 'web', required: true, description: 'Website key to fetch from', example: 'niceoppai' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number (starts from 1)', example: 1, type: 'number' })
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
+  @Get(':web/last-updated')
+  async getLastUpdatedByPath(
+    @Param('web') webKey: string,
+    @Query('page') page: string = '1'
+  ): Promise<WebsiteLastUpdatedPaginatedDto> {
+    const pageNum = parseInt(page, 10) || 1;
+    return this.mangaService.getLastUpdatedWithPagination(webKey, pageNum);
   }
 }

@@ -86,3 +86,28 @@ export class LastUpdatedResponseDto {
   })
   timestamp: Date;
 }
+
+export class PaginationMetaDto {
+  @ApiProperty({ example: 1, description: 'Current page number' })
+  currentPage: number;
+
+  // @ApiProperty({ example: 10, description: 'Number of items per page' })
+  // perPage: number;
+
+  // @ApiProperty({ example: 50, description: 'Total number of items' })
+  // total: number;
+
+  @ApiProperty({ example: 5, description: 'Total number of pages' })
+  totalPages: number;
+
+  // @ApiProperty({ example: true, description: 'Whether there is a next page' })
+  // hasNextPage: boolean;
+
+  // @ApiProperty({ example: false, description: 'Whether there is a previous page' })
+  // hasPrevPage: boolean;
+}
+
+export class WebsiteLastUpdatedPaginatedDto extends WebsiteLastUpdatedDto {
+  @ApiProperty({ type: PaginationMetaDto, description: 'Pagination metadata' })
+  pagination: PaginationMetaDto;
+}

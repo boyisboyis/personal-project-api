@@ -1,26 +1,14 @@
 import {
   Controller,
   Get,
-  Post,
-  Put,
-  Delete,
-  Param,
-  Body,
-  Query,
-  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
 import { MangaService } from './manga.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { SearchMangaDto } from './dto/search-manga.dto';
-import { CreateMangaDto } from './dto/create-manga.dto';
-import { UpdateMangaDto } from './dto/update-manga.dto';
+import { LastUpdatedResponseDto } from './dto/last-updated.dto';
 
 @ApiTags('Manga')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('manga')
 export class MangaController {
   constructor(private readonly mangaService: MangaService) {}
@@ -28,6 +16,16 @@ export class MangaController {
   @Get('webs')
   async getSupportedWebsites() {
     return this.mangaService.getSupportedWebsites();
+  }
+
+  @ApiOperation({ 
+    summary: 'Get latest updated manga from all supported websites',
+    description: 'Returns the 5 most recently updated manga from each supported website'
+  })
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
+  @Get('last-updated')
+  async getLastUpdated(): Promise<LastUpdatedResponseDto> {
+    return this.mangaService.getLastUpdated();
   }
 
   // @ApiOperation({ summary: 'Search manga by query, genre, or status' })

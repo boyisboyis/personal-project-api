@@ -2,8 +2,8 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
-import { MangaService } from './manga.service';
-import { LastUpdatedResponseDto } from './dto/last-updated.dto';
+import { MangaService } from '@/manga/manga.service';
+import { LastUpdatedResponseDto } from '@/manga/dto/last-updated.dto';
 
 @ApiTags('Manga')
 @Controller('manga')

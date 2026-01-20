@@ -1,4 +1,4 @@
-import { MangaItemDto } from '../../dto/last-updated.dto';
+import { MangaItemDto } from '@/manga/dto/last-updated.dto';
 
 export interface MangaScraperAdapter {
   /**

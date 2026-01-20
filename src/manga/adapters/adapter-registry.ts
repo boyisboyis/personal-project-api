@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { MangaScraperAdapter } from './base/manga-scraper.interface';
-import { NiceoppaiAdapter } from './niceoppai-adapter';
-import { DokimoriAdapter } from './dokimori-adapter';
+import { MangaScraperAdapter } from '@/manga/adapters/base/manga-scraper.interface';
+import { NiceoppaiAdapter } from '@/manga/adapters/niceoppai-adapter';
+import { DokimoriAdapter } from '@/manga/adapters/dokimori-adapter';
 
 @Injectable()
 export class AdapterRegistry {

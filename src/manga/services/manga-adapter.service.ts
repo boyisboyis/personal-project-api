@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AdapterRegistry } from '../adapters/adapter-registry';
-import { MangaItemDto, WebsiteLastUpdatedDto, LastUpdatedResponseDto } from '../dto/last-updated.dto';
-import { SupportedWebsiteDto } from '../dto/supported-website.dto';
+import { AdapterRegistry } from '@/manga/adapters/adapter-registry';
+import { MangaItemDto, WebsiteLastUpdatedDto, LastUpdatedResponseDto } from '@/manga/dto/last-updated.dto';
+import { SupportedWebsiteDto } from '@/manga/dto/supported-website.dto';
 
 @Injectable()
 export class MangaAdapterService {

@@ -99,7 +99,7 @@ export abstract class BaseMangaAdapter implements MangaScraperAdapter {
     return result.manga.slice(0, limit);
   }
 
-  abstract getLatestUpdated(limit?: number): Promise<MangaItemDto[]>;
+  abstract getLatestUpdated(page?: number, limit?: number): Promise<MangaItemDto[]>;
   abstract searchManga(query: string, limit?: number): Promise<MangaItemDto[]>;
   abstract getMangaDetails(identifier: string): Promise<MangaItemDto | null>;
   

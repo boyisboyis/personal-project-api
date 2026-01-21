@@ -15,12 +15,12 @@ export class DokimoriAdapter extends BaseMangaAdapter {
     this.setPuppeteerService(mangaPuppeteerService);
   }
 
-  async getLatestUpdated(limit: number = 5): Promise<MangaItemDto[]> {
+  async getLatestUpdated(page: number = 1, limit: number = 5): Promise<MangaItemDto[]> {
     try {
       this.logOperation(`Fetching latest ${limit} manga`);
 
       // Option 1: Use real scraping (uncomment to enable)
-      const latestUrl = `${this.websiteUrl}`;
+      const latestUrl = `${this.websiteUrl}/page/${page}/`;
       const scrapedData = await this.scrapeMangaListWithPuppeteer(latestUrl, limit, {
         waitForSelector: '#loop-content',
         delay: { min: 600, max: 1200 },

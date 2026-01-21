@@ -53,7 +53,7 @@ export class MangaAdapterService {
 
     try {
       const startTime = Date.now();
-      const mangas = await adapter.getLatestUpdated(limit);
+      const mangas = await adapter.getLatestUpdated(page, limit);
       const duration = Date.now() - startTime;
 
       // Record metrics
@@ -117,7 +117,7 @@ export class MangaAdapterService {
     const promises = adapters.map(async adapter => {
       try {
         const startTime = Date.now();
-        const mangas = await adapter.getLatestUpdated(limit);
+        const mangas = await adapter.getLatestUpdated(1, limit);
         const duration = Date.now() - startTime;
 
         this.metricsService.recordScrape(adapter.websiteKey, duration, true, mangas.length);

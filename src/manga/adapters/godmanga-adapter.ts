@@ -15,12 +15,12 @@ export class GodmangaAdapter extends BaseMangaAdapter {
     this.setPuppeteerService(mangaPuppeteerService);
   }
 
-  async getLatestUpdated(limit: number = 5): Promise<MangaItemDto[]> {
+  async getLatestUpdated(page: number = 1, limit: number = 5): Promise<MangaItemDto[]> {
     try {
       this.logOperation(`Fetching latest ${limit} manga`);
 
       // Use real scraping
-      const latestUrl = `${this.websiteUrl}`;
+      const latestUrl = `${this.websiteUrl}/page/${page}/`;
       const scrapedData = await this.scrapeMangaListWithPuppeteer(latestUrl, limit, {
         waitForSelector: 'body',
         delay: { min: 800, max: 1500 },

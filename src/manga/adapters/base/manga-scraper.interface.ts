@@ -19,10 +19,11 @@ export interface MangaScraperAdapter {
 
   /**
    * Get latest updated manga from this website
+   * @param page Page number for pagination
    * @param limit Maximum number of manga to return
    * @returns Promise resolving to array of manga items
    */
-  getLatestUpdated(limit?: number): Promise<MangaItemDto[]>;
+  getLatestUpdated(page?: number, limit?: number): Promise<MangaItemDto[]>;
 
   /**
    * Search manga by title or keywords

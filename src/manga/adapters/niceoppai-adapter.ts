@@ -15,12 +15,12 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
     this.setPuppeteerService(mangaPuppeteerService);
   }
 
-  async getLatestUpdated(limit: number = 5): Promise<MangaItemDto[]> {
+  async getLatestUpdated(page: number = 1, limit: number = 5): Promise<MangaItemDto[]> {
     try {
       this.logOperation(`Fetching latest ${limit} manga`);
 
       // Option 1: Use real scraping (uncomment to enable)
-      const latestUrl = `${this.websiteUrl}/manga_list/all/any/last-updated/1/`;
+      const latestUrl = `${this.websiteUrl}/manga_list/all/any/last-updated/${page}/`;
       const scrapedData = await this.scrapeMangaListWithPuppeteer(latestUrl, limit, {
         waitForSelector: '#sct_content',
         delay: { min: 800, max: 1500 },

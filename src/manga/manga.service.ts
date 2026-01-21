@@ -13,9 +13,14 @@ export class MangaService {
     return this.mangaAdapterService.getSupportedWebsites();
   }
 
-  async getLastUpdated(webKey: string) {
+  async getLastUpdated(webKey: string, limit: number = 5) {
     this.logger.log(`Delegating to MangaAdapterService for last updated manga from ${webKey}`);
-    return this.mangaAdapterService.getLastUpdatedByWebsite(webKey, 5);
+    return this.mangaAdapterService.getLastUpdatedByWebsite(webKey, limit);
+  }
+
+  async getAllLastUpdated(limit: number = 5) {
+    this.logger.log(`Delegating to MangaAdapterService for last updated manga from all websites`);
+    return this.mangaAdapterService.getAllLastUpdated(limit);
   }
 
   async getLastUpdatedWithPagination(webKey: string, page: number = 1): Promise<WebsiteLastUpdatedPaginatedDto> {
@@ -23,7 +28,7 @@ export class MangaService {
     this.logger.log(`Delegating to MangaAdapterService for last updated manga from ${webKey} (page: ${page})`);
     
     // Use same cache as the original endpoint by getting all available data (no limit)
-    const websiteData = await this.mangaAdapterService.getLastUpdatedByWebsite(webKey, page, 9999);
+    const websiteData = await this.mangaAdapterService.getLastUpdatedByWebsite(webKey, 9999, page);
     
     // Calculate pagination
     // const totalItems = websiteData.mangas.length;

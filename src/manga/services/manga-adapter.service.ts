@@ -31,7 +31,7 @@ export class MangaAdapterService {
   /**
    * Get latest updated manga from specific website
    */
-  async getLastUpdatedByWebsite(websiteKey: string, page: number = 1, limit: number = 5): Promise<WebsiteLastUpdatedDto> {
+  async getLastUpdatedByWebsite(websiteKey: string, limit: number = 5, page: number = 1): Promise<WebsiteLastUpdatedDto> {
     const cacheKey = CacheService.createMangaKey(websiteKey, 'last-updated', page.toString());
     
     // Try cache first
@@ -92,5 +92,66 @@ export class MangaAdapterService {
         fetchedAt,
       };
     }
+  }
+
+  /**
+   * Get latest updated manga from all websites
+   */
+  async getAllLastUpdated(limit: number = 5): Promise<WebsiteLastUpdatedDto[]> {
+    const cacheKey = `all-websites-last-updated-${limit}`;
+    
+    // Try cache first
+    const cached = this.cacheService.get<WebsiteLastUpdatedDto[]>(cacheKey);
+    if (cached) {
+      this.logger.log(`Returning cached last updated manga from all websites`);
+      return cached;
+    }
+
+    this.logger.log(`Fetching last updated manga from all websites (limit: ${limit})`);
+
+    const adapters = this.adapterRegistry.getAllAdapters();
+    const results: WebsiteLastUpdatedDto[] = [];
+    const overallStartTime = Date.now();
+
+    // Fetch from all adapters in parallel
+    const promises = adapters.map(async adapter => {
+      try {
+        const startTime = Date.now();
+        const mangas = await adapter.getLatestUpdated(limit);
+        const duration = Date.now() - startTime;
+
+        this.metricsService.recordScrape(adapter.websiteKey, duration, true, mangas.length);
+
+        return {
+          websiteKey: adapter.websiteKey,
+          websiteName: adapter.websiteName,
+          mangas,
+          fetchedAt: new Date(),
+        };
+      } catch (error) {
+        this.metricsService.recordScrape(adapter.websiteKey, Date.now() - overallStartTime, false);
+        this.logger.error(`Failed to fetch from ${adapter.websiteName}:`, error.message);
+        
+        // Return empty result for failed adapters
+        return {
+          websiteKey: adapter.websiteKey,
+          websiteName: adapter.websiteName,
+          mangas: [],
+          fetchedAt: new Date(),
+        };
+      }
+    });
+
+    const websiteResults = await Promise.all(promises);
+    results.push(...websiteResults);
+
+    const overallDuration = Date.now() - overallStartTime;
+    const totalManga = results.reduce((sum, site) => sum + site.mangas.length, 0);
+
+    // Cache the result (3 minutes TTL for aggregated data)
+    this.cacheService.set(cacheKey, results, 3 * 60 * 1000);
+
+    this.logger.log(`Successfully fetched ${totalManga} manga from ${results.length} websites in ${overallDuration}ms`);
+    return results;
   }
 }

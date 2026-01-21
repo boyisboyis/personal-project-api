@@ -16,20 +16,38 @@ export class MangaController {
   }
 
   @ApiOperation({
-    summary: 'Get latest updated manga from a specific website',
-    description: 'Returns the 5 most recently updated manga from the specified website',
+    summary: 'Get latest updated manga from all websites or a specific website',
+    description: 'Returns the latest updated manga. If no "web" parameter is provided, returns aggregated results from all websites. If "web" parameter is provided, returns results from that specific website only.',
   })
   @ApiQuery({ 
     name: 'web', 
-    required: true, 
-    description: 'Website key to fetch from (required)', 
+    required: false, 
+    description: 'Website key to fetch from (optional). If not provided, aggregates from all websites.', 
     example: 'niceoppai',
-    enum: ['niceoppai', 'dokimori', 'godmanga']
+    enum: ['niceoppai', 'dokimori', 'godmanga', 'tanuki']
+  })
+  @ApiQuery({ 
+    name: 'limit', 
+    required: false, 
+    description: 'Maximum number of manga per website to return (default: 5)', 
+    example: 5,
+    type: 'number'
   })
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   @Get('last-updated')
-  async getLastUpdated(@Query('web') webKey: string): Promise<WebsiteLastUpdatedDto> {
-    return this.mangaService.getLastUpdated(webKey);
+  async getLastUpdated(
+    @Query('web') webKey?: string,
+    @Query('limit') limit?: string
+  ): Promise<WebsiteLastUpdatedDto | WebsiteLastUpdatedDto[]> {
+    const limitNum = parseInt(limit || '5', 10) || 5;
+    
+    if (webKey) {
+      // Return single website data
+      return this.mangaService.getLastUpdated(webKey, limitNum);
+    } else {
+      // Return aggregated data from all websites
+      return this.mangaService.getAllLastUpdated(limitNum);
+    }
   }
 
   @ApiOperation({
@@ -41,7 +59,7 @@ export class MangaController {
     required: true, 
     description: 'Website key to fetch from', 
     example: 'niceoppai',
-    enum: ['niceoppai', 'dokimori', 'godmanga']
+    enum: ['niceoppai', 'dokimori', 'godmanga', 'tanuki']
   })
   @ApiQuery({ name: 'page', required: false, description: 'Page number (starts from 1)', example: 1, type: 'number' })
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute

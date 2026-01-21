@@ -20,9 +20,9 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
       this.logOperation(`Fetching latest ${limit} manga`);
 
       // Option 1: Use real scraping (uncomment to enable)
-      const latestUrl = `${this.websiteUrl}`;
+      const latestUrl = `${this.websiteUrl}/manga_list/all/any/last-updated/1/`;
       const scrapedData = await this.scrapeMangaListWithPuppeteer(latestUrl, limit, {
-        waitForSelector: '#text-4',
+        waitForSelector: '#sct_content',
         delay: { min: 800, max: 1500 },
       });
       // if (scrapedData.length > 0) {
@@ -119,7 +119,7 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
       (limit) => {
         const results: any[] = [];
         const selectors = {
-          container: '#text-4 div.nde',
+          container: '#sct_content div.nde',
           title: 'a.ttl',
           link: 'a.ttl',
           chapter: 'div.det > ul > li:nth-child(1) > a',

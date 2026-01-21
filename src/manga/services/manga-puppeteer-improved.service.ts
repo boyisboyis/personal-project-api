@@ -185,6 +185,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
    */
   async scrapeMangaList(
     url: string, 
+    limit: number,
     adapter: MangaScraperAdapter, 
     config: MangaScrapingConfig = {}
   ): Promise<MangaScrapingResult> {
@@ -225,7 +226,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
       console.log('Page loaded, starting data extraction.', await page.title());
       
       // Extract manga data using adapter-specific logic
-      const manga = await adapter.extractMangaData(page, url);
+      const manga = await adapter.extractMangaData(page, url, limit);
       const scrapingTime = Date.now() - startTime;
 
       this.logger.log(`[${adapter.websiteKey}] Successfully scraped ${manga.length} manga items in ${scrapingTime}ms`);

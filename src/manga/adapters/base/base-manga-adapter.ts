@@ -162,12 +162,12 @@ export abstract class BaseMangaAdapter implements MangaScraperAdapter {
     }
 
     const scrapingConfig = { ...this.getDefaultScrapingConfig(), ...config };
-    const result = await this.puppeteerService.scrapeMangaList(url, this, scrapingConfig);
+    const result = await this.puppeteerService.scrapeMangaList(url, limit, this, scrapingConfig);
 
     if (result.errors.length > 0) {
       this.logger.warn(`Scraping completed with errors:`, result.errors);
     }
-
+    console.log('url:(', url, ') limit:(', limit, ') result.manga.length:', result.manga.length);
     return result.manga.slice(0, limit);
   }
 

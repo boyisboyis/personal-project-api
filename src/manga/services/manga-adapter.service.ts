@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AdapterRegistry } from '@/manga/adapters/adapter-registry';
 import { WebsiteLastUpdatedDto } from '@/manga/dto/last-updated.dto';
 import { SupportedWebsiteDto } from '@/manga/dto/supported-website.dto';
-import { CacheService } from '@/common/cache/cache.service';
 import { MetricsService } from '@/common/monitoring/metrics.service';
 
 @Injectable()
@@ -11,7 +10,6 @@ export class MangaAdapterService {
 
   constructor(
     private readonly adapterRegistry: AdapterRegistry,
-    private readonly cacheService: CacheService,
     private readonly metricsService: MetricsService,
   ) {}
 
@@ -32,16 +30,7 @@ export class MangaAdapterService {
    * Get latest updated manga from specific website
    */
   async getLastUpdatedByWebsite(websiteKey: string, limit: number = 5, page: number = 1): Promise<WebsiteLastUpdatedDto> {
-    const cacheKey = CacheService.createMangaKey(websiteKey, 'last-updated', page.toString());
-    
-    // Try cache first
-    const cached = this.cacheService.get<WebsiteLastUpdatedDto>(cacheKey);
-    if (cached) {
-      this.logger.log(`Returning cached last updated manga for ${websiteKey} (page: ${page})`);
-      return cached;
-    }
-
-    this.logger.log(`Fetching last updated manga from ${websiteKey} (page: ${page})`);
+    this.logger.log(`Fetching last updated manga from ${websiteKey} (page: ${page}) with limit ${limit})`);
 
     const adapter = this.adapterRegistry.getAdapter(websiteKey);
     if (!adapter) {
@@ -74,10 +63,9 @@ export class MangaAdapterService {
       // Return single website object instead of array
       const response = website;
 
-      // Cache the result (5 minutes TTL)
-      this.cacheService.set(cacheKey, response, 5 * 60 * 1000);
-
       this.logger.log(`Successfully fetched ${mangas.length} manga from ${adapter.websiteName} in ${overallDuration}ms`);
+
+      return response;
       return response;
 
     } catch (error) {
@@ -98,15 +86,6 @@ export class MangaAdapterService {
    * Get latest updated manga from all websites
    */
   async getAllLastUpdated(limit: number = 5): Promise<WebsiteLastUpdatedDto[]> {
-    const cacheKey = `all-websites-last-updated-${limit}`;
-    
-    // Try cache first
-    const cached = this.cacheService.get<WebsiteLastUpdatedDto[]>(cacheKey);
-    if (cached) {
-      this.logger.log(`Returning cached last updated manga from all websites`);
-      return cached;
-    }
-
     this.logger.log(`Fetching last updated manga from all websites (limit: ${limit})`);
 
     const adapters = this.adapterRegistry.getAllAdapters();
@@ -147,9 +126,6 @@ export class MangaAdapterService {
 
     const overallDuration = Date.now() - overallStartTime;
     const totalManga = results.reduce((sum, site) => sum + site.mangas.length, 0);
-
-    // Cache the result (3 minutes TTL for aggregated data)
-    this.cacheService.set(cacheKey, results, 3 * 60 * 1000);
 
     this.logger.log(`Successfully fetched ${totalManga} manga from ${results.length} websites in ${overallDuration}ms`);
     return results;

@@ -7,7 +7,6 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
-    "vercel-build": "npm run build",
     "format": "bunx prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "node dist/main.js",
     "start:dev": "nodemon --exec \"npm run build && node dist/main.js\" --watch src --ext ts --delay 1000ms",
@@ -34,12 +33,10 @@
     "cheerio": "^1.0.0-rc.12",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
-    "express": "^4.18.2",
     "nest-winston": "^1.9.4",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.1",
     "puppeteer": "^24.35.0",
-    "puppeteer-core": "^24.35.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "winston": "^3.10.0"

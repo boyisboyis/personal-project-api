@@ -23,7 +23,7 @@ export interface MangaScrapingResult {
 export class MangaPuppeteerService implements OnModuleDestroy {
   private readonly logger = new Logger(MangaPuppeteerService.name);
   private browserPool: Browser[] = [];
-  private readonly maxPoolSize = process.env.VERCEL === '1' ? 1 : 3; // Reduce pool size for Vercel
+  private readonly maxPoolSize = 3;
   private browserInUse = new Set<Browser>();
   private isShuttingDown = false;
 
@@ -110,8 +110,6 @@ export class MangaPuppeteerService implements OnModuleDestroy {
    */
   private async launchBrowser(config: MangaScrapingConfig = {}): Promise<Browser> {
     try {
-      const isVercel = process.env.VERCEL === '1';
-      
       const browser = await puppeteer.launch({
         headless: config.headless ?? true,
         args: [
@@ -123,21 +121,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
           '--no-zygote',
           '--disable-gpu',
           '--memory-pressure-off',
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-renderer-backgrounding',
-          '--disable-web-security',
-          '--disable-features=TranslateUI',
-          '--disable-ipc-flooding-protection',
-          ...(isVercel ? [
-            '--single-process', // Important for Vercel
-            '--disable-extensions'
-          ] : [])
         ],
-        // Use chrome-aws-lambda in Vercel environment if available
-        executablePath: isVercel && process.env.PUPPETEER_EXECUTABLE_PATH 
-          ? process.env.PUPPETEER_EXECUTABLE_PATH 
-          : undefined,
       });
 
       this.logger.debug(`Browser launched successfully: ${await browser.version()}`);

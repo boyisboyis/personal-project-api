@@ -11,7 +11,5 @@
     "ignoreDeprecations": null,
     "skipLibCheck": true,
     "strictPropertyInitialization": false
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
+  }
 }

@@ -50,6 +50,78 @@ export abstract class BaseMangaAdapter implements MangaScraperAdapter {
   }
 
   /**
+   * Extract manga slug/ID from URL
+   * Examples:
+   * - https://www.niceoppai.net/Glory-Hole/ → Glory-Hole
+   * - https://www.niceoppai.net/Long-Title-Name/ → Long-Title-Name
+   * - https://www.dokimori.com/manga/some-title/ → some-title
+   */
+  protected extractSlugFromUrl(url: string, websiteKey: string): string {
+    try {
+      if (!url) {
+        return '';
+      }
+
+      // Handle different URL formats
+      let cleanUrl = url.trim();
+      
+      // Remove protocol and domain if present
+      const urlParts = cleanUrl.split('/').filter(part => part && part !== 'http:' && part !== 'https:');
+      
+      // Find the relevant part (usually after domain)
+      let slug = '';
+      const domainIndex = urlParts.findIndex(part => 
+        part.includes('.com') || 
+        part.includes('.net') || 
+        part.includes('.org') ||
+        part.includes('.co') ||
+        part.includes('www.')
+      );
+
+      if (domainIndex >= 0 && domainIndex < urlParts.length - 1) {
+        // Get all parts after domain
+        const pathParts = urlParts.slice(domainIndex + 1).filter(part => part);
+        
+        // For URLs like /manga/title/, get the part after 'manga'
+        if (pathParts.includes('manga') || pathParts.includes('series')) {
+          const mangaIndex = Math.max(pathParts.indexOf('manga'), pathParts.indexOf('series'));
+          if (mangaIndex >= 0 && mangaIndex < pathParts.length - 1) {
+            slug = pathParts[mangaIndex + 1];
+          }
+        }
+        
+        // If still no slug, get the most meaningful part
+        if (!slug) {
+          slug = pathParts.find(part => 
+            part.length > 3 && 
+            !part.includes('.') && 
+            part !== 'manga' && 
+            part !== 'series' &&
+            part !== 'chapter' &&
+            part !== 'read'
+          ) || pathParts[pathParts.length - 1] || '';
+        }
+      } else {
+        // Fallback: get the longest meaningful part
+        slug = urlParts.find(part => 
+          part.length > 3 && 
+          !part.includes('.') && 
+          part !== 'manga' && 
+          part !== 'series' &&
+          part !== 'chapter'
+        ) || urlParts[urlParts.length - 1] || '';
+      }
+
+      // Clean up the slug
+      slug = slug.replace(/\/$/, ''); // Remove trailing slash
+      
+      return slug || `${websiteKey}-unknown`;
+    } catch (error) {
+      return `${websiteKey}-error`;
+    }
+  }
+
+  /**
    * Log adapter operation
    */
   protected logOperation(operation: string, details?: any): void {

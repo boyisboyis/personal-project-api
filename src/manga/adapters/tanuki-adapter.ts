@@ -95,8 +95,64 @@ export class TanukiAdapter extends BaseMangaAdapter {
       }
     });
 
-    return await page.evaluate(limit => {
+    return await page.evaluate((limit, websiteKey) => {
       const results: any[] = [];
+
+      // Helper function to extract slug from URL
+      const extractSlugFromUrl = (url: string) => {
+        try {
+          if (!url) return '';
+          
+          let cleanUrl = url.trim();
+          const urlParts = cleanUrl.split('/').filter(part => part && part !== 'http:' && part !== 'https:');
+          
+          let slug = '';
+          const domainIndex = urlParts.findIndex(part => 
+            part.includes('.com') || 
+            part.includes('.net') || 
+            part.includes('.org') ||
+            part.includes('.co') ||
+            part.includes('www.')
+          );
+
+          if (domainIndex >= 0 && domainIndex < urlParts.length - 1) {
+            const pathParts = urlParts.slice(domainIndex + 1).filter(part => part);
+            
+            // For URLs like /manga/title/, get the part after 'manga'
+            if (pathParts.includes('manga') || pathParts.includes('series')) {
+              const mangaIndex = Math.max(pathParts.indexOf('manga'), pathParts.indexOf('series'));
+              if (mangaIndex >= 0 && mangaIndex < pathParts.length - 1) {
+                slug = pathParts[mangaIndex + 1];
+              }
+            }
+            
+            // If still no slug, get the most meaningful part
+            if (!slug) {
+              slug = pathParts.find(part => 
+                part.length > 3 && 
+                !part.includes('.') && 
+                part !== 'manga' && 
+                part !== 'series' &&
+                part !== 'chapter' &&
+                part !== 'read'
+              ) || pathParts[pathParts.length - 1] || '';
+            }
+          } else {
+            slug = urlParts.find(part => 
+              part.length > 3 && 
+              !part.includes('.') && 
+              part !== 'manga' && 
+              part !== 'series' &&
+              part !== 'chapter'
+            ) || urlParts[urlParts.length - 1] || '';
+          }
+
+          slug = slug.replace(/\/$/, '');
+          return slug || `${websiteKey}-unknown-${Date.now()}`;
+        } catch (error) {
+          return `${websiteKey}-error-${Date.now()}`;
+        }
+      };
 
       // Try multiple possible selectors for Tanuki Manga
       const possibleSelectors = [
@@ -156,14 +212,17 @@ export class TanukiAdapter extends BaseMangaAdapter {
           const url = linkEl?.getAttribute('href');
 
           if (title && title.length > 0) {
+            const fullUrl = url ? (url.startsWith('http') ? url : `${window.location.origin}${url}`) : undefined;
+            const mangaId = fullUrl ? extractSlugFromUrl(fullUrl) : `${websiteKey}-${index + 1}`;
+            
             results.push({
-              id: `tanuki-${index + 1}`,
+              id: mangaId,
               title,
               author: authorEl?.textContent?.trim(),
               coverImage: imageEl?.getAttribute('src') || imageEl?.getAttribute('data-src'),
               latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
               lastUpdated: lastUpdatedEl?.textContent?.trim() || undefined,
-              url: url ? (url.startsWith('http') ? url : `${window.location.origin}${url}`) : undefined,
+              url: fullUrl,
             });
           }
         } catch (error) {
@@ -173,6 +232,6 @@ export class TanukiAdapter extends BaseMangaAdapter {
 
       console.log(`Successfully extracted ${results.length} manga items`);
       return results;
-    }, limit);
+    }, limit, 'tanuki');
   }
 }

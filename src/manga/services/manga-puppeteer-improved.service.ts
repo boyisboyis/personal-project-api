@@ -110,6 +110,8 @@ export class MangaPuppeteerService implements OnModuleDestroy {
    */
   private async launchBrowser(config: MangaScrapingConfig = {}): Promise<Browser> {
     try {
+      const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
+      
       const browser = await puppeteer.launch({
         headless: config.headless ?? true,
         args: [
@@ -121,7 +123,16 @@ export class MangaPuppeteerService implements OnModuleDestroy {
           '--no-zygote',
           '--disable-gpu',
           '--memory-pressure-off',
+          ...(isRailway ? [
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding'
+          ] : [])
         ],
+        // Use system Chromium on Railway
+        executablePath: isRailway && process.env.PUPPETEER_EXECUTABLE_PATH 
+          ? process.env.PUPPETEER_EXECUTABLE_PATH 
+          : undefined,
       });
 
       this.logger.debug(`Browser launched successfully: ${await browser.version()}`);

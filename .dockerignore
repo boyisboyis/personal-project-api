@@ -1,0 +1,17 @@
+# Ignore files for Railway deployment
+node_modules/
+*.log
+.env
+.env.local
+.env.*.local
+coverage/
+.DS_Store
+.vscode/
+.git/
+
+# Keep source and config files
+!src/
+!package*.json
+!tsconfig*.json
+!nest-cli.json
+!bun.lockb

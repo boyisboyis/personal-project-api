@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { MangaScraperAdapter } from '@/manga/adapters/base/manga-scraper.interface';
 import { MangaItemDto } from '@/manga/dto/last-updated.dto';
 import { MangaPuppeteerService, MangaScrapingConfig } from '@/manga/services/manga-puppeteer-improved.service';
+import { Page } from 'puppeteer';
 
 @Injectable()
 export abstract class BaseMangaAdapter implements MangaScraperAdapter {
@@ -89,7 +90,7 @@ export abstract class BaseMangaAdapter implements MangaScraperAdapter {
     }
 
     const scrapingConfig = { ...this.getDefaultScrapingConfig(), ...config };
-    const result = await this.puppeteerService.scrapeMangaList(url, this.websiteKey, scrapingConfig);
+    const result = await this.puppeteerService.scrapeMangaList(url, this, scrapingConfig);
 
     if (result.errors.length > 0) {
       this.logger.warn(`Scraping completed with errors:`, result.errors);
@@ -101,6 +102,11 @@ export abstract class BaseMangaAdapter implements MangaScraperAdapter {
   abstract getLatestUpdated(limit?: number): Promise<MangaItemDto[]>;
   abstract searchManga(query: string, limit?: number): Promise<MangaItemDto[]>;
   abstract getMangaDetails(identifier: string): Promise<MangaItemDto | null>;
+  
+  /**
+   * Extract manga data from a Puppeteer page - must be implemented by each adapter
+   */
+  abstract extractMangaData(page: Page, baseUrl: string, limit?: number): Promise<MangaItemDto[]>;
 
   async isAvailable(): Promise<boolean> {
     try {

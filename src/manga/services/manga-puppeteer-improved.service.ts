@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { MangaItemDto } from '@/manga/dto/last-updated.dto';
+import { MangaScraperAdapter } from '@/manga/adapters/base/manga-scraper.interface';
 
 export interface MangaScrapingConfig {
   headless?: boolean;
@@ -180,16 +181,20 @@ export class MangaPuppeteerService implements OnModuleDestroy {
   }
 
   /**
-   * Scrape manga list from a webpage
+   * Scrape manga list from a webpage using specific adapter
    */
-  async scrapeMangaList(url: string, websiteKey: string, config: MangaScrapingConfig = {}): Promise<MangaScrapingResult> {
+  async scrapeMangaList(
+    url: string, 
+    adapter: MangaScraperAdapter, 
+    config: MangaScrapingConfig = {}
+  ): Promise<MangaScrapingResult> {
     const startTime = Date.now();
     let browser: Browser | null = null;
     let page: Page | null = null;
     const errors: string[] = [];
 
     try {
-      this.logger.log(`[${websiteKey}] Starting manga scraping from ${url}`);
+      this.logger.log(`[${adapter.websiteKey}] Starting manga scraping from ${url}`);
 
       browser = await this.getBrowser(config);
       page = await browser.newPage();
@@ -198,7 +203,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
       await this.configurePage(page, config);
 
       // Navigate to URL
-      this.logger.debug(`[${websiteKey}] Navigating to: ${url}`);
+      this.logger.debug(`[${adapter.websiteKey}] Navigating to: ${url}`);
       await page.goto(url, {
         waitUntil: 'networkidle0',
         timeout: config.timeout || 30000,
@@ -216,12 +221,14 @@ export class MangaPuppeteerService implements OnModuleDestroy {
         const delay = typeof config.delay === 'number' ? config.delay : Math.floor(Math.random() * (config.delay.max - config.delay.min + 1)) + config.delay.min;
         await new Promise(resolve => setTimeout(resolve, delay));
       }
+      
       console.log('Page loaded, starting data extraction.', await page.title());
-      // Extract manga data
-      const manga = await this.extractMangaData(page, url, websiteKey);
+      
+      // Extract manga data using adapter-specific logic
+      const manga = await adapter.extractMangaData(page, url);
       const scrapingTime = Date.now() - startTime;
 
-      this.logger.log(`[${websiteKey}] Successfully scraped ${manga.length} manga items in ${scrapingTime}ms`);
+      this.logger.log(`[${adapter.websiteKey}] Successfully scraped ${manga.length} manga items in ${scrapingTime}ms`);
 
       return {
         manga,
@@ -230,10 +237,10 @@ export class MangaPuppeteerService implements OnModuleDestroy {
         errors,
       };
     } catch (error) {
-      console.error(`[${websiteKey}] Error during scraping:`, error);
+      console.error(`[${adapter.websiteKey}] Error during scraping:`, error);
       const scrapingTime = Date.now() - startTime;
       errors.push(error.message);
-      this.logger.error(`[${websiteKey}] Error scraping manga list from ${url}:`, error.message);
+      this.logger.error(`[${adapter.websiteKey}] Error scraping manga list from ${url}:`, error.message);
 
       return {
         manga: [],
@@ -255,97 +262,5 @@ export class MangaPuppeteerService implements OnModuleDestroy {
         this.releaseBrowser(browser);
       }
     }
-  }
-
-  /**
-   * Extract manga data from page
-   */
-  private async extractMangaData(page: Page, baseUrl: string, websiteKey: string, limit: number = 10): Promise<MangaItemDto[]> {
-    console.log('Extracting manga data for website key:', websiteKey);
-    page.on('console', async msg => {
-      const msgArgs = msg.args();
-      for (let i = 0; i < msgArgs.length; ++i) {
-        console.log(await msgArgs[i].jsonValue());
-      }
-    });
-
-    return await page.evaluate(
-      (siteKey, limit) => {
-        const results: MangaItemDto[] = [];
-
-        // Generic selectors for different websites
-        const selectors = {
-          niceoppai: {
-            container: '#text-4 div.nde',
-            title: 'a.ttl',
-            link: 'a.ttl',
-            chapter: 'div.det > ul > li:nth-child(1) > a',
-            image: 'div.cvr > a > img',
-            author: 'a.ttl',
-          },
-          dokimori: {
-            container: '.page-item-detail',
-            title: 'div.item-summary.item-display > div > h4 > a',
-            link: 'div.item-summary.item-display > div > h4 > a',
-            chapter: 'div.chapter-item > span.chapter.font-meta > a',
-            image: 'div.image-display  a > img',
-            author: 'div.item-summary.item-display > div > h4 > a',
-          },
-          godmanga: {
-            container: 'div.flexbox4-item',
-            title: 'div.flexbox4-side div.title > a',
-            link: 'div.flexbox4-content > a',
-            chapter: 'div.flexbox4-side ul.chapter > li:first-child a',
-            image: 'div.flexbox4-thumb img',
-            author: 'div.flexbox4-side div.title > a',
-            lastUpdated: 'div.flexbox4-side ul.chapter > li:first-child span.date',
-          },
-          default: {
-            container: '.manga, .series, .item, [class*="manga"], [class*="series"]',
-            title: 'h1, h2, h3, .title, [class*="title"]',
-            link: 'a',
-            chapter: '.chapter, .ch, .episode',
-            image: 'img',
-            author: '.author, .creator, .writer',
-          },
-        };
-        const config = (selectors as any)[siteKey] || selectors.default;
-        const containers = document.querySelectorAll(config.container);
-        console.log(`Found ${containers.length} manga containers on the page. ${limit}`);
-        containers.forEach((container, index) => {
-          try {
-            const titleEl = container.querySelector(config.title);
-            const linkEl = container.querySelector(config.link);
-            let chapterEl = container.querySelector(config.chapter);
-            const imageEl = container.querySelector(config.image);
-            const authorEl = container.querySelector(config.author);
-            const lastUpdatedEl = config.lastUpdated ? container.querySelector(config.lastUpdated) : undefined;
-
-            const title = titleEl?.textContent?.trim();
-            const url = linkEl?.getAttribute('href');
-            if (siteKey === 'niceoppai' && chapterEl) {
-              chapterEl.querySelector('span').remove();
-            }
-            if (title && results.length < limit) {
-              results.push({
-                id: `${siteKey}-${index + 1}`,
-                title,
-                author: authorEl?.textContent?.trim(),
-                coverImage: imageEl?.getAttribute('src'),
-                latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
-                lastUpdated: lastUpdatedEl?.textContent?.trim() || undefined,
-                url: url ? (url.startsWith('http') ? url : `${window.location.origin}${url}`) : undefined,
-              });
-            }
-          } catch (error) {
-            console.warn('Error extracting manga item:', error);
-          }
-        });
-
-        return results;
-      },
-      websiteKey,
-      limit
-    );
   }
 }

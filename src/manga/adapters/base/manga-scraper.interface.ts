@@ -1,4 +1,5 @@
 import { MangaItemDto } from '@/manga/dto/last-updated.dto';
+import { Page } from 'puppeteer';
 
 export interface MangaScraperAdapter {
   /**
@@ -43,4 +44,14 @@ export interface MangaScraperAdapter {
    * @returns Promise resolving to boolean
    */
   isAvailable(): Promise<boolean>;
+
+  /**
+   * Extract manga data from a Puppeteer page
+   * Each adapter implements its own scraping logic
+   * @param page Puppeteer page instance
+   * @param baseUrl Base URL of the website
+   * @param limit Maximum number of manga to extract
+   * @returns Promise resolving to array of manga items
+   */
+  extractMangaData(page: Page, baseUrl: string, limit?: number): Promise<MangaItemDto[]>;
 }

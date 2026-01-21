@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { BaseMangaAdapter } from '@/manga/adapters/base/base-manga-adapter';
 import { MangaItemDto } from '@/manga/dto/last-updated.dto';
 import { MangaPuppeteerService } from '@/manga/services/manga-puppeteer-improved.service';
+import { Page } from 'puppeteer';
 
 @Injectable()
 export class GodmangaAdapter extends BaseMangaAdapter {
@@ -114,5 +115,72 @@ export class GodmangaAdapter extends BaseMangaAdapter {
       lastUpdated: new Date().toISOString(),
       url: `${this.websiteUrl}/${identifier}/`,
     };
+  }
+
+  /**
+   * Extract manga data from Godmanga website
+   */
+  async extractMangaData(page: Page, baseUrl: string, limit: number = 10): Promise<MangaItemDto[]> {
+    console.log('Extracting manga data for Godmanga');
+    
+    // Enable console logging from page for debugging
+    page.on('console', async msg => {
+      const msgArgs = msg.args();
+      for (let i = 0; i < msgArgs.length; ++i) {
+        console.log(await msgArgs[i].jsonValue());
+      }
+    });
+
+    return await page.evaluate(
+      (limit) => {
+        const results: any[] = [];
+        const selectors = {
+          container: 'div.flexbox4-item',
+          title: 'div.flexbox4-side div.title > a',
+          link: 'div.flexbox4-content > a',
+          chapter: 'div.flexbox4-side ul.chapter > li:first-child a',
+          image: 'div.flexbox4-thumb img',
+          author: 'div.flexbox4-side div.title > a',
+          lastUpdated: 'div.flexbox4-side ul.chapter > li:first-child span.date',
+        };
+
+        const containers = document.querySelectorAll(selectors.container);
+        console.log(`Found ${containers.length} manga containers on the page. Limit: ${limit}`);
+
+        containers.forEach((container, index) => {
+          if (results.length >= limit) return;
+
+          try {
+            const titleEl = container.querySelector(selectors.title);
+            const linkEl = container.querySelector(selectors.link);
+            const chapterEl = container.querySelector(selectors.chapter);
+            const imageEl = container.querySelector(selectors.image);
+            const authorEl = container.querySelector(selectors.author);
+            const lastUpdatedEl = container.querySelector(selectors.lastUpdated);
+
+            const title = titleEl?.textContent?.trim();
+            const url = linkEl?.getAttribute('href');
+
+            if (title) {
+              results.push({
+                id: `godmanga-${index + 1}`,
+                title,
+                author: authorEl?.textContent?.trim(),
+                coverImage: imageEl?.getAttribute('src'),
+                latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
+                lastUpdated: lastUpdatedEl?.textContent?.trim() || undefined,
+                url: url ? (url.startsWith('http') ? url : `${window.location.origin}${url}`) : undefined,
+              });
+            }
+          } catch (error) {
+            console.warn(`Error extracting manga item at index ${index}:`, error);
+          }
+        });
+
+        console.log(`Successfully extracted ${results.length} manga items`);
+        return results;
+      },
+      limit
+    );
   }
 }

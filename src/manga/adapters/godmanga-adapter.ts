@@ -25,12 +25,11 @@ export class GodmangaAdapter extends BaseMangaAdapter {
         waitForSelector: 'body',
         delay: { min: 800, max: 1500 },
       });
-      
-      return scrapedData;
 
+      return scrapedData;
     } catch (error) {
       this.logger.error(`Failed to fetch latest updated manga from ${this.websiteName}:`, error.message);
-      
+
       // Return mock data as fallback
       return this.generateMockLatestUpdated(limit);
     }
@@ -39,7 +38,7 @@ export class GodmangaAdapter extends BaseMangaAdapter {
   async searchManga(query: string, limit: number = 10): Promise<MangaItemDto[]> {
     try {
       this.logOperation(`Searching for "${query}" (limit: ${limit})`);
-      
+
       // Return mock search results as fallback
       return this.generateMockSearchResults(query, limit);
     } catch (error) {
@@ -49,50 +48,143 @@ export class GodmangaAdapter extends BaseMangaAdapter {
   }
 
   async getMangaDetails(identifier: string): Promise<MangaItemDto | null> {
+    this.logger.log(`[${this.websiteKey}] Fetching manga details for: ${identifier}`);
+
     try {
-      this.logOperation(`Getting details for manga: ${identifier}`);
-      
-      // Return mock details as fallback
-      return this.generateMockMangaDetails(identifier);
+      if (!this.puppeteerService) {
+        throw new Error('Puppeteer service not initialized');
+      }
+
+      const mangaUrl = `${this.websiteUrl}/series/${identifier}`;
+      this.logger.log(`[${this.websiteKey}] Attempting to fetch from: ${mangaUrl}`);
+
+      // Use Puppeteer to scrape manga details page with GodManga specific configuration
+      const scrapingConfig = {
+        ...this.getDefaultScrapingConfig(),
+        delay: { min: 1000, max: 2000 },
+        waitForSelector: '#con3',
+      };
+      const result = await this.puppeteerService.scrapeMangaDetails(mangaUrl, this, scrapingConfig);
+
+      if (result.errors.length > 0) {
+        this.logger.warn(`[${this.websiteKey}] Scraping completed with errors:`, result.errors);
+      }
+
+      this.logger.log(`[${this.websiteKey}] Manga details scraping result:`, !!result.manga);
+      return result.manga;
     } catch (error) {
-      this.logger.error(`Failed to get manga details from ${this.websiteName}:`, error.message);
-      return null;
+      this.logger.error(`[${this.websiteKey}] Error fetching manga details:`, error.message);
+
+      // Fallback to mock details as last resort
+      this.logger.log(`[${this.websiteKey}] Falling back to mock data for: ${identifier}`);
+      return this.generateMockMangaDetails(identifier);
     }
   }
 
+  /**
+   * Extract manga details including chapters from manga detail page
+   */
+  async extractMangaDetails(page: Page, url: string): Promise<MangaItemDto | null> {
+    return await page.evaluate((websiteUrl: string) => {
+      try {
+        // Function to extract slug from URL
+        function extractSlugFromUrl(url: string): string {
+          const urlPatterns = [/\/([^\/]+)\/?$/, /\/manga\/([^\/]+)/, /\/title\/([^\/]+)/, /\/series\/([^\/]+)/, /\/comic\/([^\/]+)/];
+
+          for (const pattern of urlPatterns) {
+            const match = url.match(pattern);
+            if (match && match[1] && match[1] !== 'manga' && match[1] !== 'title') {
+              return match[1];
+            }
+          }
+
+          const segments = url.split('/').filter(segment => segment.length > 0);
+          return segments[segments.length - 1] || 'unknown';
+        }
+
+        // Extract basic manga information from GodManga structure
+        const titleEl = document.querySelector('#con3 div.series-synops strong');
+        const title = titleEl?.textContent?.trim();
+        console.log('Extracted title:', title);
+        if (!title) {
+          return null;
+        }
+
+        const authorEl = document.querySelector('#con3 div.series-info > ul > li:nth-child(3) > span');
+        const author = authorEl?.textContent?.trim();
+
+        const coverEl = document.querySelector('div.series-thumb img') as HTMLImageElement;
+        const coverImage = coverEl?.src;
+
+        // Extract manga ID from URL
+        const mangaId = extractSlugFromUrl(window.location.href);
+
+        // Extract chapters - GodManga specific selectors
+        const chapters: any[] = [];
+        const chapterElements = document.querySelectorAll('div.series-chapter ul.series-chapterlist li');
+
+        chapterElements.forEach((chapterEl, index) => {
+          try {
+            const chapterLinkEl = chapterEl.querySelector('a');
+            const lastUpdatedEl = chapterEl.querySelector('span.date');
+            const lastUpdated = lastUpdatedEl?.textContent?.trim();
+            lastUpdatedEl?.remove();
+            const chapterTitle = chapterLinkEl?.textContent?.trim();
+            const chapterUrl = chapterLinkEl?.getAttribute('href');
+
+            if (chapterTitle && chapterUrl) {
+              // Extract chapter number from title
+              const chapterNumberMatch = chapterTitle.match(/\d+/);
+              const chapterNumber = chapterNumberMatch ? parseFloat(chapterNumberMatch[chapterNumberMatch.length - 1]) : index + 1;
+
+              chapters.push({
+                title: chapterTitle,
+                url: chapterUrl,
+                chapterNumber: chapterNumber,
+                lastUpdated: lastUpdated,
+              });
+            }
+          } catch (error) {
+            console.warn(`Error extracting chapter at index ${index}:`, error);
+          }
+        });
+
+        // Sort chapters by chapter number (descending for latest first)
+        // chapters.sort((a, b) => (b.chapterNumber || 0) - (a.chapterNumber || 0));
+
+        return {
+          id: mangaId,
+          title: title,
+          author: author,
+          coverImage: coverImage,
+          latestChapter: chapters.length > 0 ? chapters[0].chapterNumber : undefined,
+          lastUpdated: chapters.length > 0 ? chapters[0].lastUpdated : undefined,
+          url: window.location.href,
+          chapters: chapters,
+        };
+      } catch (error) {
+        console.error('Error extracting manga details:', error);
+        return null;
+      }
+    }, this.websiteUrl);
+  }
+
   private generateMockLatestUpdated(limit: number): MangaItemDto[] {
-    const mockTitles = [
-      'One Piece',
-      'Naruto',
-      'Dragon Ball Super',
-      'Attack on Titan',
-      'My Hero Academia',
-      'Demon Slayer',
-      'Jujutsu Kaisen',
-      'Tokyo Ghoul',
-      'Death Note',
-      'Bleach'
-    ];
+    const mockTitles = ['One Piece', 'Naruto', 'Dragon Ball Super', 'Attack on Titan', 'My Hero Academia', 'Demon Slayer', 'Jujutsu Kaisen', 'Tokyo Ghoul', 'Death Note', 'Bleach'];
 
     return Array.from({ length: Math.min(limit, mockTitles.length) }, (_, index) => ({
       id: `${this.websiteKey}-${index + 1}`,
       title: mockTitles[index],
       author: mockTitles[index], // Using title as author for simplicity
       coverImage: `${this.websiteUrl}/cover/${mockTitles[index].toLowerCase().replace(/\s+/g, '-')}.jpg`,
-      latestChapter: Math.floor(Math.random() * 1000) + Date.now() % 1000000, // Random chapter number
+      latestChapter: Math.floor(Math.random() * 1000) + (Date.now() % 1000000), // Random chapter number
       lastUpdated: new Date().toISOString(),
       url: `${this.websiteUrl}/${mockTitles[index].toLowerCase().replace(/\s+/g, '-')}/`,
     }));
   }
 
   private generateMockSearchResults(query: string, limit: number): MangaItemDto[] {
-    const mockResults = [
-      `${query} - The Beginning`,
-      `${query} Chronicles`,
-      `Adventures of ${query}`,
-      `${query} vs The World`,
-      `Legend of ${query}`
-    ];
+    const mockResults = [`${query} - The Beginning`, `${query} Chronicles`, `Adventures of ${query}`, `${query} vs The World`, `Legend of ${query}`];
 
     return Array.from({ length: Math.min(limit, mockResults.length) }, (_, index) => ({
       id: `${this.websiteKey}-search-${index + 1}`,
@@ -122,7 +214,7 @@ export class GodmangaAdapter extends BaseMangaAdapter {
    */
   async extractMangaData(page: Page, baseUrl: string, limit: number = 10): Promise<MangaItemDto[]> {
     console.log('Extracting manga data for Godmanga');
-    
+
     // Enable console logging from page for debugging
     page.on('console', async msg => {
       const msgArgs = msg.args();
@@ -148,22 +240,18 @@ export class GodmangaAdapter extends BaseMangaAdapter {
         const extractSlugFromUrl = (url: string) => {
           try {
             if (!url) return '';
-            
+
             let cleanUrl = url.trim();
             const urlParts = cleanUrl.split('/').filter(part => part && part !== 'http:' && part !== 'https:');
-            
+
             let slug = '';
-            const domainIndex = urlParts.findIndex(part => 
-              part.includes('.com') || 
-              part.includes('.net') || 
-              part.includes('.org') ||
-              part.includes('.co') ||
-              part.includes('www.')
+            const domainIndex = urlParts.findIndex(
+              part => part.includes('.com') || part.includes('.net') || part.includes('.org') || part.includes('.co') || part.includes('www.')
             );
 
             if (domainIndex >= 0 && domainIndex < urlParts.length - 1) {
               const pathParts = urlParts.slice(domainIndex + 1).filter(part => part);
-              
+
               // For URLs like /manga/title/, get the part after 'manga'
               if (pathParts.includes('manga') || pathParts.includes('series')) {
                 const mangaIndex = Math.max(pathParts.indexOf('manga'), pathParts.indexOf('series'));
@@ -171,26 +259,17 @@ export class GodmangaAdapter extends BaseMangaAdapter {
                   slug = pathParts[mangaIndex + 1];
                 }
               }
-              
+
               // If still no slug, get the most meaningful part
               if (!slug) {
-                slug = pathParts.find(part => 
-                  part.length > 3 && 
-                  !part.includes('.') && 
-                  part !== 'manga' && 
-                  part !== 'series' &&
-                  part !== 'chapter' &&
-                  part !== 'read'
-                ) || pathParts[pathParts.length - 1] || '';
+                slug =
+                  pathParts.find(part => part.length > 3 && !part.includes('.') && part !== 'manga' && part !== 'series' && part !== 'chapter' && part !== 'read') ||
+                  pathParts[pathParts.length - 1] ||
+                  '';
               }
             } else {
-              slug = urlParts.find(part => 
-                part.length > 3 && 
-                !part.includes('.') && 
-                part !== 'manga' && 
-                part !== 'series' &&
-                part !== 'chapter'
-              ) || urlParts[urlParts.length - 1] || '';
+              slug =
+                urlParts.find(part => part.length > 3 && !part.includes('.') && part !== 'manga' && part !== 'series' && part !== 'chapter') || urlParts[urlParts.length - 1] || '';
             }
 
             slug = slug.replace(/\/$/, '');
@@ -220,7 +299,7 @@ export class GodmangaAdapter extends BaseMangaAdapter {
             if (title) {
               const fullUrl = url ? (url.startsWith('http') ? url : `${window.location.origin}${url}`) : undefined;
               const mangaId = fullUrl ? extractSlugFromUrl(fullUrl) : `${websiteKey}-${index + 1}`;
-              
+
               results.push({
                 id: mangaId,
                 title,

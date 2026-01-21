@@ -12,6 +12,5 @@ coverage
 logs
 *.log
 .vercel
-src/
 test/
 .git/

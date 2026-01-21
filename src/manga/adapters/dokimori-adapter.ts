@@ -49,7 +49,7 @@ export class DokimoriAdapter extends BaseMangaAdapter {
       // Option 1: Use real scraping (uncomment to enable)
       const searchUrl = `${this.websiteUrl}/search?keyword=${encodeURIComponent(query)}`;
       const scrapedData = await this.scrapeMangaListWithPuppeteer(searchUrl, limit, {
-        waitForSelector: '.search-result, .manga-container',
+        waitForSelector: '#loop-content',
         delay: { min: 800, max: 1500 },
       });
       // if (scrapedData.length > 0) {

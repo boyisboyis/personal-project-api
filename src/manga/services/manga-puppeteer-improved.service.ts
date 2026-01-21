@@ -284,11 +284,11 @@ export class MangaPuppeteerService implements OnModuleDestroy {
             author: 'a.ttl',
           },
           dokimori: {
-            container: '#loop-content > div:nth-child(1) > div > div',
+            container: '.page-item-detail',
             title: 'div.item-summary.item-display > div > h4 > a',
             link: 'div.item-summary.item-display > div > h4 > a',
             chapter: 'div.chapter-item > span.chapter.font-meta > a',
-            image: 'div.item-summary.item-display > div > h4 > a',
+            image: 'div.image-display  a > img',
             author: 'div.item-summary.item-display > div > h4 > a',
           },
           godmanga: {

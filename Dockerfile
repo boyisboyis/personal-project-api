@@ -21,9 +21,8 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-COPY bun.lockb ./
 
-# Install dependencies
+# Install dependencies using npm (since Railway might not have bun)
 RUN npm install
 
 # Copy source code

@@ -130,4 +130,43 @@ export class MangaAdapterService {
     this.logger.log(`Successfully fetched ${totalManga} manga from ${results.length} websites in ${overallDuration}ms`);
     return results;
   }
+
+  /**
+   * Get manga details from specific website using manga key
+   */
+  async getMangaDetails(websiteKey: string, mangaKey: string) {
+    this.logger.log(`Fetching manga details for ${mangaKey} from ${websiteKey}`);
+
+    const adapter = this.adapterRegistry.getAdapter(websiteKey);
+    if (!adapter) {
+      throw new Error(`Adapter not found for website: ${websiteKey}`);
+    }
+
+    const startTime = Date.now();
+    
+    try {
+      const mangaDetails = await adapter.getMangaDetails(mangaKey);
+      const duration = Date.now() - startTime;
+
+      // Record metrics
+      this.metricsService.recordScrape(adapter.websiteKey, duration, true, mangaDetails ? 1 : 0);
+      this.metricsService.recordMetric('manga_details_operation', duration, {
+        website: websiteKey,
+        found: mangaDetails ? 'true' : 'false',
+      });
+
+      if (!mangaDetails) {
+        this.logger.warn(`Manga details not found for ${mangaKey} from ${adapter.websiteName}`);
+        return null;
+      }
+
+      this.logger.log(`Successfully fetched manga details for ${mangaKey} from ${adapter.websiteName} in ${duration}ms`);
+      return mangaDetails;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      this.metricsService.recordScrape(adapter.websiteKey, duration, false);
+      this.logger.error(`Failed to fetch manga details for ${mangaKey} from ${adapter.websiteName}:`, error.message);
+      throw error;
+    }
+  }
 }

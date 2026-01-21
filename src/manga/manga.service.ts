@@ -49,4 +49,11 @@ export class MangaService {
       },
     };
   }
+
+  /**
+   * Get manga details by website and manga key
+   */
+  async getMangaDetails(webKey: string, mangaKey: string) {
+    return this.mangaAdapterService.getMangaDetails(webKey, mangaKey);
+  }
 }

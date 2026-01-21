@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { BaseMangaAdapter } from '@/manga/adapters/base/base-manga-adapter';
-import { MangaItemDto } from '@/manga/dto/last-updated.dto';
+import { MangaItemDto, ChapterDto } from '@/manga/dto/last-updated.dto';
 import { MangaPuppeteerService } from '@/manga/services/manga-puppeteer-improved.service';
 import { Page } from 'puppeteer';
 
@@ -75,14 +75,30 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
   }
 
   async getMangaDetails(identifier: string): Promise<MangaItemDto | null> {
+    this.logger.log(`[${this.websiteKey}] Fetching manga details for: ${identifier}`);
+
     try {
-      this.logOperation(`Fetching manga details for: ${identifier}`);
-      this.logOperation(`Manga details not implemented - returning null`);
-      return null;
+      if (!this.puppeteerService) {
+        throw new Error('Puppeteer service not initialized');
+      }
+
+      const mangaUrl = `${this.websiteUrl}/${identifier}`;
+      this.logger.log(`[${this.websiteKey}] Attempting to fetch from: ${mangaUrl}`);
+
+      // Use Puppeteer to scrape manga details page
+      const scrapingConfig = this.getDefaultScrapingConfig();
+      const result = await this.puppeteerService.scrapeMangaDetails(mangaUrl, this, scrapingConfig);
+
+      if (result.errors.length > 0) {
+        this.logger.warn(`[${this.websiteKey}] Scraping completed with errors:`, result.errors);
+      }
+
+      this.logger.log(`[${this.websiteKey}] Manga details scraping result:`, !!result.manga);
+      return result.manga;
     } catch (error) {
-      this.handleError('getMangaDetails', error);
+      this.logger.error(`[${this.websiteKey}] Error fetching manga details:`, error.message);
+      return null;
     }
-    return null;
   }
 
   async isAvailable(): Promise<boolean> {
@@ -106,7 +122,7 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
    */
   async extractMangaData(page: Page, baseUrl: string, limit: number = 10): Promise<MangaItemDto[]> {
     console.log('Extracting manga data for Niceoppai');
-    
+
     // Enable console logging from page for debugging
     page.on('console', async msg => {
       const msgArgs = msg.args();
@@ -131,22 +147,18 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
         const extractSlugFromUrl = (url: string) => {
           try {
             if (!url) return '';
-            
+
             let cleanUrl = url.trim();
             const urlParts = cleanUrl.split('/').filter(part => part && part !== 'http:' && part !== 'https:');
-            
+
             let slug = '';
-            const domainIndex = urlParts.findIndex(part => 
-              part.includes('.com') || 
-              part.includes('.net') || 
-              part.includes('.org') ||
-              part.includes('.co') ||
-              part.includes('www.')
+            const domainIndex = urlParts.findIndex(
+              part => part.includes('.com') || part.includes('.net') || part.includes('.org') || part.includes('.co') || part.includes('www.')
             );
 
             if (domainIndex >= 0 && domainIndex < urlParts.length - 1) {
               const pathParts = urlParts.slice(domainIndex + 1).filter(part => part);
-              
+
               // For URLs like /manga/title/, get the part after 'manga'
               if (pathParts.includes('manga') || pathParts.includes('series')) {
                 const mangaIndex = Math.max(pathParts.indexOf('manga'), pathParts.indexOf('series'));
@@ -154,26 +166,17 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
                   slug = pathParts[mangaIndex + 1];
                 }
               }
-              
+
               // If still no slug, get the most meaningful part
               if (!slug) {
-                slug = pathParts.find(part => 
-                  part.length > 3 && 
-                  !part.includes('.') && 
-                  part !== 'manga' && 
-                  part !== 'series' &&
-                  part !== 'chapter' &&
-                  part !== 'read'
-                ) || pathParts[pathParts.length - 1] || '';
+                slug =
+                  pathParts.find(part => part.length > 3 && !part.includes('.') && part !== 'manga' && part !== 'series' && part !== 'chapter' && part !== 'read') ||
+                  pathParts[pathParts.length - 1] ||
+                  '';
               }
             } else {
-              slug = urlParts.find(part => 
-                part.length > 3 && 
-                !part.includes('.') && 
-                part !== 'manga' && 
-                part !== 'series' &&
-                part !== 'chapter'
-              ) || urlParts[urlParts.length - 1] || '';
+              slug =
+                urlParts.find(part => part.length > 3 && !part.includes('.') && part !== 'manga' && part !== 'series' && part !== 'chapter') || urlParts[urlParts.length - 1] || '';
             }
 
             slug = slug.replace(/\/$/, '');
@@ -210,7 +213,7 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
             if (title) {
               const fullUrl = url ? (url.startsWith('http') ? url : `${window.location.origin}${url}`) : undefined;
               const mangaId = fullUrl ? extractSlugFromUrl(fullUrl) : `${websiteKey}-${index + 1}`;
-              
+
               results.push({
                 id: mangaId,
                 title,
@@ -232,5 +235,95 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
       limit,
       'niceoppai'
     );
+  }
+
+  /**
+   * Extract manga details including chapters from manga detail page
+   */
+  async extractMangaDetails(page: Page, url: string): Promise<MangaItemDto | null> {
+    page.on('console', async msg => {
+      const msgArgs = msg.args();
+      for (let i = 0; i < msgArgs.length; ++i) {
+        console.log(await msgArgs[i].jsonValue());
+      }
+    });
+    return await page.evaluate((websiteUrl: string) => {
+      try {
+        // Function to extract slug from URL (same as in list extraction)
+        function extractSlugFromUrl(url: string): string {
+          const urlPatterns = [/\/([^\/]+)\/?$/, /\/manga\/([^\/]+)/, /\/title\/([^\/]+)/, /\/series\/([^\/]+)/, /\/read\/([^\/]+)/, /\/chapter\/([^\/]+)/];
+
+          for (const pattern of urlPatterns) {
+            const match = url.match(pattern);
+            if (match && match[1] && match[1] !== 'manga' && match[1] !== 'title') {
+              return match[1];
+            }
+          }
+
+          const segments = url.split('/').filter(segment => segment.length > 0);
+          return segments[segments.length - 1] || 'unknown';
+        }
+
+        // Extract basic manga information
+        const titleEl = document.querySelector('#sct_content h1.ttl');
+        const title = titleEl?.textContent?.trim();
+
+        if (!title) {
+          return null;
+        }
+
+        const authorEl = document.querySelector('.author, .series-author, [class*="author"]');
+        const author = authorEl?.textContent?.trim();
+
+        const coverEl = document.querySelector('.series-image img, .manga-cover img, .cover img') as HTMLImageElement;
+        const coverImage = coverEl?.src;
+
+        // Extract manga ID from URL
+        const mangaId = extractSlugFromUrl(window.location.href);
+
+        // Extract chapters
+        const chapters: ChapterDto[] = [];
+        const chapterElements = document.querySelectorAll('ul.lst > li');
+        chapterElements.forEach((chapterEl, index) => {
+          try {
+            const chapterTitleEl = chapterEl.querySelector('.val');
+            const chapterTitle = chapterTitleEl?.textContent?.trim();
+            const chapterUrlEl = chapterEl.querySelector('a.lst')
+            const chapterUrl = chapterUrlEl?.getAttribute('href');
+
+            if (chapterTitle && chapterUrl) {
+              // Extract chapter number from title or URL
+              const chapterNumberMatch = chapterTitle.match(/\d+/)
+              const chapterNumber = chapterNumberMatch ? parseFloat(chapterNumberMatch[0]) : index + 1;
+
+              chapters.push({
+                title: chapterTitle,
+                url: chapterUrl,
+                chapterNumber: chapterNumber,
+              });
+            }
+          } catch (error) {
+            console.warn(`Error extracting chapter at index ${index}:`, error);
+          }
+        });
+
+        // Sort chapters by chapter number (descending for latest first)
+        chapters.sort((a, b) => (b.chapterNumber || 0) - (a.chapterNumber || 0));
+
+        return {
+          id: mangaId,
+          title: title,
+          author: author,
+          coverImage: coverImage,
+          latestChapter: chapters.length > 0 ? chapters[0].chapterNumber : undefined,
+          lastUpdated: new Date().toISOString(), // Use current time as we don't have exact last updated
+          url: window.location.href,
+          chapters: chapters,
+        };
+      } catch (error) {
+        console.error('Error extracting manga details:', error);
+        return null;
+      }
+    }, this.websiteUrl);
   }
 }

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MangaScraperAdapter } from '@/manga/adapters/base/manga-scraper.interface';
-import { MangaItemDto } from '@/manga/dto/last-updated.dto';
+import { MangaItemDto, ChapterDto } from '@/manga/dto/last-updated.dto';
 import { MangaPuppeteerService, MangaScrapingConfig } from '@/manga/services/manga-puppeteer-improved.service';
 import { Page } from 'puppeteer';
 
@@ -46,6 +46,24 @@ export abstract class BaseMangaAdapter implements MangaScraperAdapter {
       latestChapter: data.latestChapter,
       lastUpdated: data.lastUpdated,
       url: data.url || `${this.websiteUrl}/manga/${data.id}`,
+      chapters: data.chapters || [],
+    };
+  }
+
+  /**
+   * Create a chapter item with default values
+   */
+  protected createChapterItem(data: {
+    title: string;
+    url: string;
+    chapterNumber?: number;
+    publishedAt?: Date;
+  }): ChapterDto {
+    return {
+      title: data.title,
+      url: data.url,
+      chapterNumber: data.chapterNumber,
+      publishedAt: data.publishedAt,
     };
   }
 
@@ -173,7 +191,50 @@ export abstract class BaseMangaAdapter implements MangaScraperAdapter {
 
   abstract getLatestUpdated(page?: number, limit?: number): Promise<MangaItemDto[]>;
   abstract searchManga(query: string, limit?: number): Promise<MangaItemDto[]>;
-  abstract getMangaDetails(identifier: string): Promise<MangaItemDto | null>;
+  
+  /**
+   * Default implementation for getMangaDetails - can be overridden by specific adapters
+   */
+  async getMangaDetails(identifier: string): Promise<MangaItemDto | null> {
+    this.logger.log(`[${this.websiteKey}] Fetching manga details for: ${identifier}`);
+    
+    try {
+      if (!this.puppeteerService) {
+        throw new Error('Puppeteer service not initialized');
+      }
+
+      // Check if the specific adapter has extractMangaDetails method
+      if (typeof (this as any).extractMangaDetails === 'function') {
+        const mangaUrl = `${this.websiteUrl}/manga/${identifier}`;
+        this.logger.log(`[${this.websiteKey}] Attempting to fetch from: ${mangaUrl}`);
+        
+        // Use Puppeteer to scrape manga details page
+        const scrapingConfig = this.getDefaultScrapingConfig();
+        const result = await this.puppeteerService.scrapeMangaDetails(mangaUrl, this, scrapingConfig);
+        
+        if (result.errors.length > 0) {
+          this.logger.warn(`[${this.websiteKey}] Scraping completed with errors:`, result.errors);
+        }
+
+        this.logger.log(`[${this.websiteKey}] Manga details scraping result:`, !!result.manga);
+        return result.manga;
+      } else {
+        this.logger.log(`[${this.websiteKey}] extractMangaDetails method not found - returning null`);
+        return null;
+      }
+    } catch (error) {
+      this.logger.error(`[${this.websiteKey}] Error fetching manga details:`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Extract manga details from a manga detail page - must be implemented by each adapter
+   */
+  async extractMangaDetails(page: Page, baseUrl: string): Promise<MangaItemDto | null> {
+    this.logger.log(`[${this.websiteKey}] Default manga details extraction - returning null`);
+    return null;
+  }
   
   /**
    * Extract manga data from a Puppeteer page - must be implemented by each adapter

@@ -19,6 +19,12 @@ export interface MangaScrapingResult {
   errors: string[];
 }
 
+export interface MangaDetailsScrapingResult {
+  manga: MangaItemDto | null;
+  scrapingTime: number;
+  errors: string[];
+}
+
 @Injectable()
 export class MangaPuppeteerService implements OnModuleDestroy {
   private readonly logger = new Logger(MangaPuppeteerService.name);
@@ -257,6 +263,89 @@ export class MangaPuppeteerService implements OnModuleDestroy {
       return {
         manga: [],
         totalFound: 0,
+        scrapingTime,
+        errors,
+      };
+    } finally {
+      // Clean up
+      if (page) {
+        try {
+          await page.close();
+        } catch (error) {
+          this.logger.warn('Error closing page:', error.message);
+        }
+      }
+
+      if (browser) {
+        this.releaseBrowser(browser);
+      }
+    }
+  }
+
+  /**
+   * Scrape manga details from a specific manga page
+   */
+  async scrapeMangaDetails(
+    url: string,
+    adapter: MangaScraperAdapter,
+    config: MangaScrapingConfig = {}
+  ): Promise<MangaDetailsScrapingResult> {
+    const startTime = Date.now();
+    const errors: string[] = [];
+    let browser: Browser | null = null;
+    let page: Page | null = null;
+
+    try {
+      this.logger.log(`[${adapter.websiteKey}] Starting manga details scraping from ${url}`);
+      
+      browser = await this.getBrowser(config);
+      page = await browser.newPage();
+
+      // Configure page
+      await this.configurePage(page, config);
+
+      // Navigate to the page
+      const response = await page.goto(url, { 
+        waitUntil: 'domcontentloaded',
+        timeout: config.timeout || 30000 
+      });
+
+      if (!response || !response.ok()) {
+        throw new Error(`Failed to load page: ${response?.status()} ${response?.statusText()}`);
+      }
+
+      // Apply delay if configured
+      if (config.delay) {
+        const delay = typeof config.delay === 'number' 
+          ? config.delay 
+          : Math.random() * (config.delay.max - config.delay.min) + config.delay.min;
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+
+      // Wait for selector if specified
+      if (config.waitForSelector) {
+        await page.waitForSelector(config.waitForSelector, { timeout: config.timeout || 10000 });
+      }
+
+      // Extract manga details using adapter's method
+      const mangaDetails = await (adapter as any).extractMangaDetails(page, url);
+      const scrapingTime = Date.now() - startTime;
+
+      this.logger.log(`[${adapter.websiteKey}] Manga details scraping completed in ${scrapingTime}ms`);
+
+      return {
+        manga: mangaDetails,
+        scrapingTime,
+        errors,
+      };
+    } catch (error) {
+      console.error(`[${adapter.websiteKey}] Error during manga details scraping:`, error);
+      const scrapingTime = Date.now() - startTime;
+      errors.push(error.message);
+      this.logger.error(`[${adapter.websiteKey}] Error scraping manga details from ${url}:`, error.message);
+
+      return {
+        manga: null,
         scrapingTime,
         errors,
       };

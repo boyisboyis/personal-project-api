@@ -60,4 +60,27 @@ export class MangaController {
     const pageNum = parseInt(page, 10) || 1;
     return this.mangaService.getLastUpdatedWithPagination(webKey, pageNum);
   }
+
+  @ApiOperation({
+    summary: 'Get manga details by website and manga key',
+    description: 'Returns detailed information about a specific manga from the specified website using the manga key/slug',
+  })
+  @ApiParam({
+    name: 'web',
+    required: true,
+    description: 'Website key to fetch from',
+    example: 'niceoppai',
+    enum: ['niceoppai', 'dokimori', 'godmanga', 'tanuki'],
+  })
+  @ApiParam({
+    name: 'webKey',
+    required: true,
+    description: 'Manga key/slug identifier from the website',
+    example: 'glory-hole',
+  })
+  @Throttle({ default: { limit: 15, ttl: 60000 } }) // 15 requests per minute
+  @Get(':web/:webKey')
+  async getMangaDetails(@Param('web') webKey: string, @Param('webKey') mangaKey: string) {
+    return this.mangaService.getMangaDetails(webKey, mangaKey);
+  }
 }

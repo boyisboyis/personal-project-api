@@ -1,5 +1,33 @@
 import { ApiProperty } from '@nestjs/swagger';
 
+export class ChapterDto {
+  @ApiProperty({
+    example: 'Chapter 1090',
+    description: 'Chapter title',
+  })
+  title: string;
+
+  @ApiProperty({
+    example: 'https://example.com/manga/one-piece/chapter-1090',
+    description: 'Chapter URL',
+  })
+  url: string;
+
+  @ApiProperty({
+    example: 1090,
+    description: 'Chapter number',
+    required: false,
+  })
+  chapterNumber?: number;
+
+  @ApiProperty({
+    example: '2026-01-20T10:00:00.000Z',
+    description: 'Chapter publish date',
+    required: false,
+  })
+  publishedAt?: Date;
+}
+
 export class MangaItemDto {
   @ApiProperty({
     example: '1',
@@ -45,6 +73,13 @@ export class MangaItemDto {
     required: false,
   })
   url?: string;
+
+  @ApiProperty({
+    type: [ChapterDto],
+    description: 'List of available chapters',
+    required: false,
+  })
+  chapters?: ChapterDto[];
 }
 
 export class WebsiteLastUpdatedDto {

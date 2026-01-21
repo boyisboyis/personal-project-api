@@ -54,12 +54,14 @@ export abstract class BaseMangaAdapter implements MangaScraperAdapter {
    * Create a chapter item with default values
    */
   protected createChapterItem(data: {
+    id: string;
     title: string;
     url: string;
     chapterNumber?: number;
     publishedAt?: Date;
   }): ChapterDto {
     return {
+      id: data.id,
       title: data.title,
       url: data.url,
       chapterNumber: data.chapterNumber,

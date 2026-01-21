@@ -1,6 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ChapterDto {
+
+  @ApiProperty({
+    example: 'ch-1090',
+    description: 'Chapter ID',
+  })
+  id: string;
+
   @ApiProperty({
     example: 'Chapter 1090',
     description: 'Chapter title',

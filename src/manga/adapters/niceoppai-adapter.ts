@@ -296,7 +296,11 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
               const chapterNumberMatch = chapterTitle.match(/\d+/)
               const chapterNumber = chapterNumberMatch ? parseFloat(chapterNumberMatch[0]) : index + 1;
 
+              // Extract chapter ID from chapter URL
+              const chapterId = extractSlugFromUrl(chapterUrl);
+
               chapters.push({
+                id: `${mangaId}/${chapterId}`,
                 title: chapterTitle,
                 url: chapterUrl,
                 chapterNumber: chapterNumber,
@@ -308,7 +312,7 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
         });
 
         // Sort chapters by chapter number (descending for latest first)
-        chapters.sort((a, b) => (b.chapterNumber || 0) - (a.chapterNumber || 0));
+        // chapters.sort((a, b) => (b.chapterNumber || 0) - (a.chapterNumber || 0));
 
         return {
           id: mangaId,

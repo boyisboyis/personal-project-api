@@ -162,7 +162,11 @@ export class DokimoriAdapter extends BaseMangaAdapter {
             const lastUpdatedEl = pageEl.querySelector('.chapter-release-date');
             const lastUpdatedText = lastUpdatedEl?.textContent?.trim();
             if (chapterTitle && chapterUrl) {
+              // Extract chapter ID from chapter URL
+              const chapterId = extractSlugFromUrl(chapterUrl);
+
               chapters.push({
+                id: `${mangaId}/${chapterId}`,
                 title: chapterTitle,
                 url: chapterUrl,
                 chapterNumber: chapterNumber,

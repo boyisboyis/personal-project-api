@@ -137,7 +137,11 @@ export class GodmangaAdapter extends BaseMangaAdapter {
               const chapterNumberMatch = chapterTitle.match(/\d+/);
               const chapterNumber = chapterNumberMatch ? parseFloat(chapterNumberMatch[chapterNumberMatch.length - 1]) : index + 1;
 
+              // Extract chapter ID from chapter URL
+              const chapterId = extractSlugFromUrl(chapterUrl);
+
               chapters.push({
+                id: chapterId,
                 title: chapterTitle,
                 url: chapterUrl,
                 chapterNumber: chapterNumber,

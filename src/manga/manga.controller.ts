@@ -73,14 +73,14 @@ export class MangaController {
     enum: ['niceoppai', 'dokimori', 'godmanga', 'tanuki'],
   })
   @ApiParam({
-    name: 'webKey',
+    name: 'mangaKey',
     required: true,
     description: 'Manga key/slug identifier from the website',
     example: 'glory-hole',
   })
   @Throttle({ default: { limit: 15, ttl: 60000 } }) // 15 requests per minute
-  @Get(':web/:webKey')
-  async getMangaDetails(@Param('web') webKey: string, @Param('webKey') mangaKey: string) {
+  @Get(':web/:mangaKey')
+  async getMangaDetails(@Param('web') webKey: string, @Param('mangaKey') mangaKey: string) {
     return this.mangaService.getMangaDetails(webKey, mangaKey);
   }
 }

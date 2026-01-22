@@ -3,6 +3,7 @@ import { AdapterRegistry } from '@/manga/adapters/adapter-registry';
 import { WebsiteLastUpdatedDto } from '@/manga/dto/last-updated.dto';
 import { SupportedWebsiteDto } from '@/manga/dto/supported-website.dto';
 import { MetricsService } from '@/common/monitoring/metrics.service';
+import { proxyImageUrls, proxyImageUrl } from '@/common/image/image.utils';
 
 @Injectable()
 export class MangaAdapterService {
@@ -52,21 +53,24 @@ export class MangaAdapterService {
         items: mangas.length.toString(),
       });
 
+      // Apply image proxy to cover images
+      const proxiedMangas = mangas.map(manga => ({
+        ...manga,
+        coverImage: manga.coverImage ? proxyImageUrl(manga.coverImage) : undefined,
+      }));
+
       const website: WebsiteLastUpdatedDto = {
         websiteKey: adapter.websiteKey,
         websiteName: adapter.websiteName,
-        mangas,
+        mangas: proxiedMangas,
         fetchedAt,
       };
 
       const overallDuration = Date.now() - overallStartTime;
-      // Return single website object instead of array
-      const response = website;
-
+      
       this.logger.log(`Successfully fetched ${mangas.length} manga from ${adapter.websiteName} in ${overallDuration}ms`);
 
-      return response;
-      return response;
+      return website;
 
     } catch (error) {
       this.metricsService.recordScrape(adapter.websiteKey, Date.now() - overallStartTime, false);
@@ -122,7 +126,17 @@ export class MangaAdapterService {
     });
 
     const websiteResults = await Promise.all(promises);
-    results.push(...websiteResults);
+    
+    // Apply image proxy to all cover images
+    const proxiedResults = websiteResults.map(website => ({
+      ...website,
+      mangas: website.mangas.map(manga => ({
+        ...manga,
+        coverImage: manga.coverImage ? proxyImageUrl(manga.coverImage) : undefined,
+      })),
+    }));
+    
+    results.push(...proxiedResults);
 
     const overallDuration = Date.now() - overallStartTime;
     const totalManga = results.reduce((sum, site) => sum + site.mangas.length, 0);
@@ -161,7 +175,14 @@ export class MangaAdapterService {
       }
 
       this.logger.log(`Successfully fetched manga details for ${mangaKey} from ${adapter.websiteName} in ${duration}ms`);
-      return mangaDetails;
+      
+      // Apply image proxy to cover image
+      const proxiedMangaDetails = {
+        ...mangaDetails,
+        coverImage: mangaDetails.coverImage ? proxyImageUrl(mangaDetails.coverImage) : undefined,
+      };
+      
+      return proxiedMangaDetails;
     } catch (error) {
       const duration = Date.now() - startTime;
       this.metricsService.recordScrape(adapter.websiteKey, duration, false);
@@ -209,8 +230,9 @@ export class MangaAdapterService {
           if (puppeteerService) {
             const scrapingConfig = (adapter as any).getDefaultScrapingConfig?.() || {};
             const imageResult = await puppeteerService.scrapeChapterImages(chapter.url, adapter, scrapingConfig);
-            images = imageResult.images;
-            this.logger.log(`Successfully scraped ${images.length} images for chapter ${chapterId}`);
+            // Apply image proxy to all scraped images
+            images = proxyImageUrls(imageResult.images);
+            this.logger.log(`Successfully scraped ${imageResult.images.length} images for chapter ${chapterId} (proxied)`);
           }
         } catch (error) {
           this.logger.warn(`Failed to scrape images for chapter ${chapterId}:`, error.message);
@@ -227,7 +249,7 @@ export class MangaAdapterService {
 
       this.logger.log(`Successfully fetched chapter details for ${chapterId} from ${adapter.websiteName} in ${duration}ms`);
       
-      // Return chapter with additional manga context and images
+      // Return chapter with additional manga context and proxied images
       return {
         ...chapter,
         images,
@@ -235,7 +257,7 @@ export class MangaAdapterService {
           id: mangaDetails.id,
           title: mangaDetails.title,
           author: mangaDetails.author,
-          coverImage: mangaDetails.coverImage,
+          coverImage: proxyImageUrl(mangaDetails.coverImage || ''), // Proxy cover image too
           url: mangaDetails.url,
         },
       };

@@ -7,6 +7,7 @@ import * as winston from 'winston';
 import { AuthModule } from './auth/auth.module';
 import { MangaModule } from './manga/manga.module';
 import { CommonModule } from './common/common.module';
+import { ImageModule } from './common/image/image.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { CommonModule } from './common/common.module';
 
     // Feature modules
     CommonModule,
+    ImageModule,
     AuthModule,
     MangaModule,
   ],

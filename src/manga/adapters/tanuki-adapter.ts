@@ -184,8 +184,19 @@ export class TanukiAdapter extends BaseMangaAdapter {
   async extractChapterImages(page: Page, chapterUrl: string): Promise<string[]> {
     return await page.evaluate(() => {
       try {
+        const sources = Array.from(document.querySelectorAll('script'))
+          .filter(t => t.textContent && t.textContent.includes('noimagehtml'))
+          .map(script => {
+            const content = (script.textContent || '').replace(/ts_reader.run\(/g, '').replace(/\);?$/, '');
+            const parse = JSON.parse(content);
+            return Array.isArray(parse.sources) && parse.sources.length > 0 ? parse.sources[0] : [];
+          });
+        if (Array.isArray(sources) && sources.length > 0) {
+          return sources[0].images || [];
+        }
+
         const images: string[] = [];
-        
+
         // Tanuki Manga specific selectors
         const imageSelectors = [
           '#readerarea img',
@@ -195,7 +206,7 @@ export class TanukiAdapter extends BaseMangaAdapter {
           '.entry-content img',
           'img[data-src]',
           'img.wp-manga-chapter-img',
-          '.page-break img'
+          '.page-break img',
         ];
 
         imageSelectors.forEach(selector => {

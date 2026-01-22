@@ -32,6 +32,10 @@ export class MangaPuppeteerService implements OnModuleDestroy {
   private readonly maxPoolSize = 3;
   private browserInUse = new Set<Browser>();
   private isShuttingDown = false;
+  private lastBrowserLaunchError: Date | null = null;
+  private consecutiveFailures = 0;
+  private readonly maxConsecutiveFailures = 3;
+  private readonly failureCooldownMs = 60000; // 1 minute cooldown
 
   /**
    * OnModuleDestroy lifecycle hook for cleanup
@@ -49,6 +53,9 @@ export class MangaPuppeteerService implements OnModuleDestroy {
       throw new Error('Service is shutting down');
     }
 
+    // Clean up disconnected browsers first
+    await this.cleanupDisconnectedBrowsers();
+
     // Try to get available browser from pool
     const availableBrowser = this.browserPool.find(browser => !this.browserInUse.has(browser));
     if (availableBrowser) {
@@ -61,21 +68,63 @@ export class MangaPuppeteerService implements OnModuleDestroy {
       } catch (error) {
         // Browser is disconnected, remove from pool
         this.browserPool = this.browserPool.filter(b => b !== availableBrowser);
+        this.browserInUse.delete(availableBrowser);
         this.logger.debug('Removed disconnected browser from pool');
       }
     }
 
-    // Create new browser if pool is not full
-    if (this.browserPool.length < this.maxPoolSize) {
-      const browser = await this.launchBrowser(config);
-      this.browserPool.push(browser);
-      this.browserInUse.add(browser);
-      this.logger.debug(`Created new browser. Pool size: ${this.browserPool.length}`);
-      return browser;
+    // Create new browser if pool is not full or we're on Railway (limit to 1 browser)
+    const maxPoolSize = process.env.RAILWAY_ENVIRONMENT === 'production' ? 1 : this.maxPoolSize;
+    if (this.browserPool.length < maxPoolSize) {
+      try {
+        const browser = await this.launchBrowser(config);
+        this.browserPool.push(browser);
+        this.browserInUse.add(browser);
+        this.logger.debug(`Created new browser. Pool size: ${this.browserPool.length}/${maxPoolSize}`);
+        return browser;
+      } catch (error) {
+        this.logger.error('Failed to create new browser, will retry:', error.message);
+        // Wait a moment and try once more
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const browser = await this.launchBrowser(config);
+        this.browserPool.push(browser);
+        this.browserInUse.add(browser);
+        this.logger.debug(`Created new browser on retry. Pool size: ${this.browserPool.length}/${maxPoolSize}`);
+        return browser;
+      }
     }
 
     // Wait for available browser if pool is full
     return this.waitForAvailableBrowser(config);
+  }
+
+  /**
+   * Clean up disconnected browsers from pool
+   */
+  private async cleanupDisconnectedBrowsers(): Promise<void> {
+    const cleanupPromises = this.browserPool.map(async (browser, index) => {
+      try {
+        await browser.version();
+        return { browser, connected: true };
+      } catch (error) {
+        return { browser, connected: false };
+      }
+    });
+
+    const results = await Promise.allSettled(cleanupPromises);
+    const disconnectedBrowsers: Browser[] = [];
+
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled' && !result.value.connected) {
+        disconnectedBrowsers.push(this.browserPool[index]);
+      }
+    });
+
+    if (disconnectedBrowsers.length > 0) {
+      this.browserPool = this.browserPool.filter(browser => !disconnectedBrowsers.includes(browser));
+      disconnectedBrowsers.forEach(browser => this.browserInUse.delete(browser));
+      this.logger.debug(`Cleaned up ${disconnectedBrowsers.length} disconnected browsers`);
+    }
   }
 
   /**
@@ -115,6 +164,20 @@ export class MangaPuppeteerService implements OnModuleDestroy {
    * Launch new browser instance
    */
   private async launchBrowser(config: MangaScrapingConfig = {}): Promise<Browser> {
+    // Circuit breaker: check if we should avoid launching due to recent failures
+    if (this.lastBrowserLaunchError && this.consecutiveFailures >= this.maxConsecutiveFailures) {
+      const timeSinceLastError = Date.now() - this.lastBrowserLaunchError.getTime();
+      if (timeSinceLastError < this.failureCooldownMs) {
+        const remainingCooldown = Math.ceil((this.failureCooldownMs - timeSinceLastError) / 1000);
+        throw new Error(`Browser launch circuit breaker active. Try again in ${remainingCooldown} seconds.`);
+      } else {
+        // Reset circuit breaker after cooldown
+        this.consecutiveFailures = 0;
+        this.lastBrowserLaunchError = null;
+        this.logger.log('Browser launch circuit breaker reset after cooldown');
+      }
+    }
+
     try {
       const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
       
@@ -127,22 +190,25 @@ export class MangaPuppeteerService implements OnModuleDestroy {
           '--disable-dev-shm-usage',
           '--disable-accelerated-2d-canvas',
           '--no-first-run',
-          '--no-zygote',
           '--disable-gpu',
           '--memory-pressure-off',
           '--disable-extensions',
           '--disable-default-apps',
+          '--disable-plugins',
+          '--disable-images', // Disable image loading to save memory
           ...(isRailway ? [
             '--disable-background-timer-throttling',
             '--disable-backgrounding-occluded-windows',
             '--disable-renderer-backgrounding',
             '--disable-features=TranslateUI',
-            '--disable-ipc-flooding-protection',
             '--disable-web-security',
             '--disable-features=VizDisplayCompositor',
-            '--single-process', // Use single process on Railway for better resource usage
-            '--max_old_space_size=512' // Limit memory usage
-          ] : [])
+            '--no-zygote', // Keep this for Railway
+            '--max_old_space_size=384', // Reduced memory limit for Railway
+            '--disable-dev-tools'
+          ] : [
+            '--no-zygote'
+          ])
         ],
         // Use system Chromium on Railway
         executablePath: isRailway && process.env.PUPPETEER_EXECUTABLE_PATH 
@@ -150,10 +216,26 @@ export class MangaPuppeteerService implements OnModuleDestroy {
           : undefined,
       });
 
+      // Test browser connection
+      await browser.version();
+      
+      // Reset failure count on successful launch
+      this.consecutiveFailures = 0;
+      this.lastBrowserLaunchError = null;
+      
       this.logger.debug(`Browser launched successfully: ${await browser.version()}`);
       return browser;
     } catch (error) {
-      this.logger.error('Failed to launch browser:', error);
+      // Track consecutive failures
+      this.consecutiveFailures++;
+      this.lastBrowserLaunchError = new Date();
+      
+      this.logger.error(`Failed to launch browser (attempt ${this.consecutiveFailures}):`, error);
+      
+      if (this.consecutiveFailures >= this.maxConsecutiveFailures) {
+        this.logger.error('Too many consecutive browser launch failures. Circuit breaker activated.');
+      }
+      
       throw new Error(`Failed to launch browser: ${error.message}`);
     }
   }

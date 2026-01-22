@@ -169,4 +169,81 @@ export class MangaAdapterService {
       throw error;
     }
   }
+
+  /**
+   * Get chapter details from specific website using manga key and chapter ID
+   */
+  async getChapterDetails(websiteKey: string, mangaKey: string, chapterId: string) {
+    this.logger.log(`Fetching chapter details for ${chapterId} from ${mangaKey} on ${websiteKey}`);
+
+    const adapter = this.adapterRegistry.getAdapter(websiteKey);
+    if (!adapter) {
+      throw new Error(`Adapter not found for website: ${websiteKey}`);
+    }
+
+    const startTime = Date.now();
+    
+    try {
+      // First get manga details to find the chapter
+      const mangaDetails = await adapter.getMangaDetails(mangaKey);
+      const duration = Date.now() - startTime;
+
+      if (!mangaDetails || !mangaDetails.chapters) {
+        this.logger.warn(`Manga or chapters not found for ${mangaKey} from ${adapter.websiteName}`);
+        return null;
+      }
+
+      // Find the specific chapter by ID
+      const chapter = mangaDetails.chapters.find(ch => ch.id === chapterId);
+      
+      if (!chapter) {
+        this.logger.warn(`Chapter ${chapterId} not found in manga ${mangaKey} from ${adapter.websiteName}`);
+        return null;
+      }
+
+      // Scrape chapter images if the adapter supports it
+      let images: string[] = [];
+      if (typeof (adapter as any).extractChapterImages === 'function') {
+        try {
+          const puppeteerService = (adapter as any).puppeteerService;
+          if (puppeteerService) {
+            const scrapingConfig = (adapter as any).getDefaultScrapingConfig?.() || {};
+            const imageResult = await puppeteerService.scrapeChapterImages(chapter.url, adapter, scrapingConfig);
+            images = imageResult.images;
+            this.logger.log(`Successfully scraped ${images.length} images for chapter ${chapterId}`);
+          }
+        } catch (error) {
+          this.logger.warn(`Failed to scrape images for chapter ${chapterId}:`, error.message);
+        }
+      }
+
+      // Record metrics
+      this.metricsService.recordScrape(adapter.websiteKey, duration, true, 1);
+      this.metricsService.recordMetric('chapter_details_operation', duration, {
+        website: websiteKey,
+        found: 'true',
+        imagesCount: images.length.toString(),
+      });
+
+      this.logger.log(`Successfully fetched chapter details for ${chapterId} from ${adapter.websiteName} in ${duration}ms`);
+      
+      // Return chapter with additional manga context and images
+      return {
+        ...chapter,
+        images,
+        manga: {
+          id: mangaDetails.id,
+          title: mangaDetails.title,
+          author: mangaDetails.author,
+          coverImage: mangaDetails.coverImage,
+          url: mangaDetails.url,
+        },
+      };
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      this.metricsService.recordScrape(adapter.websiteKey, duration, false);
+      this.logger.error(`Failed to fetch chapter details for ${chapterId} from ${adapter.websiteName}:`, error.message);
+      throw error;
+    }
+  }
 }

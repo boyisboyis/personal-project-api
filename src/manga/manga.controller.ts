@@ -1,9 +1,9 @@
 import { Controller, Get, Query, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiQuery, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
 import { MangaService } from '@/manga/manga.service';
-import { WebsiteLastUpdatedDto, WebsiteLastUpdatedPaginatedDto } from '@/manga/dto/last-updated.dto';
+import { WebsiteLastUpdatedDto, WebsiteLastUpdatedPaginatedDto, ChapterDetailsDto } from '@/manga/dto/last-updated.dto';
 
 @ApiTags('Manga')
 @Controller('manga')
@@ -79,8 +79,42 @@ export class MangaController {
     example: 'glory-hole',
   })
   @Throttle({ default: { limit: 15, ttl: 60000 } }) // 15 requests per minute
-  @Get(':web/:mangaKey')
+  @Get(':web/details/:mangaKey')
   async getMangaDetails(@Param('web') webKey: string, @Param('mangaKey') mangaKey: string) {
     return this.mangaService.getMangaDetails(webKey, mangaKey);
+  }
+
+  @ApiOperation({
+    summary: 'Get chapter details by website, manga key, and chapter ID',
+    description: 'Returns detailed information about a specific chapter from the specified manga and website',
+  })
+  @ApiParam({
+    name: 'web',
+    required: true,
+    description: 'Website key to fetch from',
+    example: 'niceoppai',
+    enum: ['niceoppai', 'dokimori', 'godmanga', 'tanuki'],
+  })
+  @ApiParam({
+    name: 'mangaKey',
+    required: true,
+    description: 'Manga key/slug identifier from the website',
+    example: 'glory-hole',
+  })
+  @ApiParam({
+    name: 'chapterId',
+    required: true,
+    description: 'Chapter ID/slug identifier',
+    example: 'ch-1',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Chapter details retrieved successfully',
+    type: ChapterDetailsDto,
+  })
+  @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute
+  @Get(':web/:mangaKey/:chapterId')
+  async getChapterDetails(@Param('web') webKey: string, @Param('mangaKey') mangaKey: string, @Param('chapterId') chapterId: string): Promise<ChapterDetailsDto | null> {
+    return this.mangaService.getChapterDetails(webKey, mangaKey, chapterId);
   }
 }

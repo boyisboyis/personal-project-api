@@ -21,10 +21,11 @@ export class TanukiAdapter extends BaseMangaAdapter {
 
       // Use real scraping with more specific configuration for Tanuki Manga
       const latestUrl = `${this.websiteUrl}/page/${page}`;
+      const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
       const scrapedData = await this.scrapeMangaListWithPuppeteer(latestUrl, limit, {
         waitForSelector: '#content',
         delay: { min: 2000, max: 3000 }, // Longer delay for Tanuki Manga
-        timeout: 45000, // Longer timeout
+        timeout: isRailway ? 120000 : 45000, // Even longer timeout for Railway due to slow site
       });
 
       this.logOperation(`Successfully scraped ${scrapedData.length} manga from real website`);
@@ -66,10 +67,11 @@ export class TanukiAdapter extends BaseMangaAdapter {
       this.logger.log(`[${this.websiteKey}] Attempting to fetch from: ${mangaUrl}`);
 
       // Use Puppeteer to scrape manga details page with Tanuki specific configuration
+      const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
       const scrapingConfig = {
         ...this.getDefaultScrapingConfig(),
         delay: { min: 2000, max: 3000 }, // Longer delay for Tanuki Manga
-        timeout: 45000, // Longer timeout
+        timeout: isRailway ? 120000 : 45000, // Even longer timeout for Railway
         waitForSelector: '#content',
       };
       const result = await this.puppeteerService.scrapeMangaDetails(mangaUrl, this, scrapingConfig);
@@ -174,6 +176,47 @@ export class TanukiAdapter extends BaseMangaAdapter {
         return null;
       }
     }, this.websiteUrl);
+  }
+
+  /**
+   * Extract chapter images from chapter page
+   */
+  async extractChapterImages(page: Page, chapterUrl: string): Promise<string[]> {
+    return await page.evaluate(() => {
+      try {
+        const images: string[] = [];
+        
+        // Tanuki Manga specific selectors
+        const imageSelectors = [
+          '#readerarea img',
+          '.reading-content img',
+          '.reader-area img',
+          '.chapter-content img',
+          '.entry-content img',
+          'img[data-src]',
+          'img.wp-manga-chapter-img',
+          '.page-break img'
+        ];
+
+        imageSelectors.forEach(selector => {
+          const imgElements = document.querySelectorAll(selector) as NodeListOf<HTMLImageElement>;
+          imgElements.forEach(img => {
+            const src = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
+            if (src && !images.includes(src)) {
+              images.push(src);
+            }
+          });
+        });
+
+        // Filter out small images and ads
+        return images.filter(src => {
+          return !src.includes('ads') && !src.includes('banner') && !src.includes('logo');
+        });
+      } catch (error) {
+        console.error('Error extracting chapter images:', error);
+        return [];
+      }
+    });
   }
 
   async isAvailable(): Promise<boolean> {

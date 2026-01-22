@@ -33,6 +33,48 @@ export class ChapterDto {
     required: false,
   })
   publishedAt?: Date;
+
+  @ApiProperty({
+    example: [
+      'https://example.com/manga/one-piece/chapter-1090/page-1.jpg',
+      'https://example.com/manga/one-piece/chapter-1090/page-2.jpg'
+    ],
+    description: 'List of chapter page images',
+    required: false,
+    type: [String],
+  })
+  images?: string[];
+}
+
+export class ChapterDetailsDto extends ChapterDto {
+  @ApiProperty({
+    description: 'Manga information context',
+    example: {
+      id: 'glory-hole',
+      title: 'Glory Hole',
+      author: 'Author Name',
+      coverImage: 'https://example.com/cover.jpg',
+      url: 'https://example.com/manga/glory-hole'
+    }
+  })
+  manga: {
+    id: string;
+    title: string;
+    author?: string;
+    coverImage?: string;
+    url?: string;
+  };
+
+  @ApiProperty({
+    example: [
+      'https://example.com/manga/one-piece/chapter-1090/page-1.jpg',
+      'https://example.com/manga/one-piece/chapter-1090/page-2.jpg',
+      'https://example.com/manga/one-piece/chapter-1090/page-3.jpg'
+    ],
+    description: 'List of chapter page images',
+    type: [String],
+  })
+  images: string[];
 }
 
 export class MangaItemDto {

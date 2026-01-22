@@ -59,10 +59,12 @@ export class GodmangaAdapter extends BaseMangaAdapter {
       this.logger.log(`[${this.websiteKey}] Attempting to fetch from: ${mangaUrl}`);
 
       // Use Puppeteer to scrape manga details page with GodManga specific configuration
+      const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
       const scrapingConfig = {
         ...this.getDefaultScrapingConfig(),
         delay: { min: 1000, max: 2000 },
-        waitForSelector: '#con3',
+        waitForSelector: '.container',
+        timeout: isRailway ? 90000 : 30000, // Extended timeout for Railway
       };
       const result = await this.puppeteerService.scrapeMangaDetails(mangaUrl, this, scrapingConfig);
 
@@ -171,6 +173,47 @@ export class GodmangaAdapter extends BaseMangaAdapter {
         return null;
       }
     }, this.websiteUrl);
+  }
+
+  /**
+   * Extract chapter images from chapter page
+   */
+  async extractChapterImages(page: Page, chapterUrl: string): Promise<string[]> {
+    return await page.evaluate(() => {
+      try {
+        const images: string[] = [];
+        
+        // GodManga specific selectors
+        const imageSelectors = [
+          '.reading-content img',
+          '.reader-area img',
+          '#readerarea img',
+          '.chapter-content img',
+          '.entry-content img',
+          'img[data-src]',
+          'img.wp-manga-chapter-img',
+          '.comic-page img'
+        ];
+
+        imageSelectors.forEach(selector => {
+          const imgElements = document.querySelectorAll(selector) as NodeListOf<HTMLImageElement>;
+          imgElements.forEach(img => {
+            const src = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
+            if (src && !images.includes(src)) {
+              images.push(src);
+            }
+          });
+        });
+
+        // Filter out ads and small images
+        return images.filter(src => {
+          return !src.includes('ads') && !src.includes('banner') && !src.includes('logo');
+        });
+      } catch (error) {
+        console.error('Error extracting chapter images:', error);
+        return [];
+      }
+    });
   }
 
   private generateMockLatestUpdated(limit: number): MangaItemDto[] {

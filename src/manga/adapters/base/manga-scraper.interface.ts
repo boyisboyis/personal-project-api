@@ -63,4 +63,12 @@ export interface MangaScraperAdapter {
    * @returns Promise resolving to manga details with chapters
    */
   extractMangaDetails?(page: Page, url: string): Promise<MangaItemDto | null>;
+
+  /**
+   * Extract chapter images from a chapter page
+   * @param page Puppeteer page instance
+   * @param chapterUrl URL of the chapter page
+   * @returns Promise resolving to array of image URLs
+   */
+  extractChapterImages?(page: Page, chapterUrl: string): Promise<string[]>;
 }

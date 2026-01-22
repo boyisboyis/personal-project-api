@@ -56,4 +56,12 @@ export class MangaService {
   async getMangaDetails(webKey: string, mangaKey: string) {
     return this.mangaAdapterService.getMangaDetails(webKey, mangaKey);
   }
+
+  /**
+   * Get chapter details by website, manga key, and chapter ID
+   */
+  async getChapterDetails(webKey: string, mangaKey: string, chapterId: string) {
+    this.logger.log(`Getting chapter details for ${webKey}/${mangaKey}/${chapterId}`);
+    return this.mangaAdapterService.getChapterDetails(webKey, mangaKey, chapterId);
+  }
 }

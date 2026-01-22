@@ -21,9 +21,11 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
 
       // Option 1: Use real scraping (uncomment to enable)
       const latestUrl = `${this.websiteUrl}/manga_list/all/any/last-updated/${page}/`;
+      const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
       const scrapedData = await this.scrapeMangaListWithPuppeteer(latestUrl, limit, {
         waitForSelector: '#sct_content',
         delay: { min: 800, max: 1500 },
+        timeout: isRailway ? 90000 : 30000, // Extended timeout for Railway
       });
       // if (scrapedData.length > 0) {
       // this.logOperation(`Successfully scraped ${scrapedData.length} manga from real website`);
@@ -86,7 +88,11 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
       this.logger.log(`[${this.websiteKey}] Attempting to fetch from: ${mangaUrl}`);
 
       // Use Puppeteer to scrape manga details page
-      const scrapingConfig = this.getDefaultScrapingConfig();
+      const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
+      const scrapingConfig = {
+        ...this.getDefaultScrapingConfig(),
+        timeout: isRailway ? 90000 : 30000, // Extended timeout for Railway
+      };
       const result = await this.puppeteerService.scrapeMangaDetails(mangaUrl, this, scrapingConfig);
 
       if (result.errors.length > 0) {
@@ -329,5 +335,40 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
         return null;
       }
     }, this.websiteUrl);
+  }
+
+  /**
+   * Extract chapter images from chapter page
+   */
+  async extractChapterImages(page: Page, chapterUrl: string): Promise<string[]> {
+    return await page.evaluate(() => {
+      try {
+        const images: string[] = [];
+        
+        // Common selectors for manga reader pages
+        const imageSelectors = [
+          '#image-container img'
+        ];
+
+        imageSelectors.forEach(selector => {
+          const imgElements = document.querySelectorAll(selector) as NodeListOf<HTMLImageElement>;
+          imgElements.forEach(img => {
+            const src = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
+            if (src && !images.includes(src)) {
+              images.push(src);
+            }
+          });
+        });
+
+        // Filter out small images (likely ads or icons)
+        return images.filter(src => {
+          // Basic filtering - exclude very small images or common ad patterns
+          return !src.includes('ads') && !src.includes('banner') && !src.includes('logo');
+        });
+      } catch (error) {
+        console.error('Error extracting chapter images:', error);
+        return [];
+      }
+    });
   }
 }

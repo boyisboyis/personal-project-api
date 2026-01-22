@@ -21,9 +21,11 @@ export class DokimoriAdapter extends BaseMangaAdapter {
 
       // Option 1: Use real scraping (uncomment to enable)
       const latestUrl = `${this.websiteUrl}/page/${page}/`;
+      const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
       const scrapedData = await this.scrapeMangaListWithPuppeteer(latestUrl, limit, {
         waitForSelector: '#loop-content',
         delay: { min: 600, max: 1200 },
+        timeout: isRailway ? 90000 : 30000, // Extended timeout for Railway
       });
       // if (scrapedData.length > 0) {
       this.logOperation(`Successfully scraped ${scrapedData.length} manga from real website`);
@@ -86,10 +88,12 @@ export class DokimoriAdapter extends BaseMangaAdapter {
       this.logger.log(`[${this.websiteKey}] Attempting to fetch from: ${mangaUrl}`);
 
       // Use Puppeteer to scrape manga details page with Dokimori specific configuration
+      const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
       const scrapingConfig = {
         ...this.getDefaultScrapingConfig(),
         delay: { min: 600, max: 1200 },
-        waitForSelector: '.site-content',
+        waitForSelector: '#loop-content',
+        timeout: isRailway ? 90000 : 30000, // Extended timeout for Railway
       };
       const result = await this.puppeteerService.scrapeMangaDetails(mangaUrl, this, scrapingConfig);
 
@@ -193,6 +197,46 @@ export class DokimoriAdapter extends BaseMangaAdapter {
         return null;
       }
     }, this.websiteUrl);
+  }
+
+  /**
+   * Extract chapter images from chapter page (doujin pages)
+   */
+  async extractChapterImages(page: Page, chapterUrl: string): Promise<string[]> {
+    return await page.evaluate(() => {
+      try {
+        const images: string[] = [];
+        
+        // Dokimori specific selectors for doujin pages
+        const imageSelectors = [
+          '.reading-content img',
+          '.page-break img',
+          '.entry-content img',
+          'img.wp-manga-chapter-img',
+          '.single-page img',
+          'img[data-src]',
+          '.doujin-page img'
+        ];
+
+        imageSelectors.forEach(selector => {
+          const imgElements = document.querySelectorAll(selector) as NodeListOf<HTMLImageElement>;
+          imgElements.forEach(img => {
+            const src = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
+            if (src && !images.includes(src)) {
+              images.push(src);
+            }
+          });
+        });
+
+        // Filter out ads and small images
+        return images.filter(src => {
+          return !src.includes('ads') && !src.includes('banner') && !src.includes('logo');
+        });
+      } catch (error) {
+        console.error('Error extracting chapter images:', error);
+        return [];
+      }
+    });
   }
 
   async isAvailable(): Promise<boolean> {

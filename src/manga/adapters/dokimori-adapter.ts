@@ -92,7 +92,7 @@ export class DokimoriAdapter extends BaseMangaAdapter {
       const scrapingConfig = {
         ...this.getDefaultScrapingConfig(),
         delay: { min: 600, max: 1200 },
-        waitForSelector: '#loop-content',
+        waitForSelector: '.site-content',
         timeout: isRailway ? 90000 : 30000, // Extended timeout for Railway
       };
       const result = await this.puppeteerService.scrapeMangaDetails(mangaUrl, this, scrapingConfig);

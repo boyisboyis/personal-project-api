@@ -55,45 +55,25 @@ export class GodmangaAdapter extends BaseMangaAdapter {
         throw new Error('Puppeteer service not initialized');
       }
 
-      // Try multiple URL patterns for GodManga
-      const urlPatterns = [
-        `${this.websiteUrl}/series/${identifier}/`,
-        `${this.websiteUrl}/manga/${identifier}/`,
-        `${this.websiteUrl}/${identifier}/`,
-        `${this.websiteUrl}/title/${identifier}/`,
-      ];
+      const mangaUrl = `${this.websiteUrl}/series/${identifier}/`;
+      this.logger.log(`[${this.websiteKey}] Attempting to fetch from: ${mangaUrl}`);
 
+      // Use Puppeteer to scrape manga details page with GodManga specific configuration
       const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
+      const scrapingConfig = {
+        ...this.getDefaultScrapingConfig(),
+        delay: { min: 1000, max: 2000 },
+        waitForSelector: '.series',
+        timeout: isRailway ? 90000 : 30000, // Extended timeout for Railway
+      };
+      const result = await this.puppeteerService.scrapeMangaDetails(mangaUrl, this, scrapingConfig);
 
-      for (const mangaUrl of urlPatterns) {
-        this.logger.log(`[${this.websiteKey}] Trying URL pattern: ${mangaUrl}`);
-        
-        try {
-          const scrapingConfig = {
-            ...this.getDefaultScrapingConfig(),
-            delay: { min: 1000, max: 2000 },
-            waitForSelector: 'body', // More generic selector
-            timeout: isRailway ? 90000 : 30000,
-          };
-          
-          const result = await this.puppeteerService.scrapeMangaDetails(mangaUrl, this, scrapingConfig);
-
-          if (result.errors.length > 0) {
-            this.logger.warn(`[${this.websiteKey}] Scraping completed with errors for ${mangaUrl}:`, result.errors);
-          }
-
-          if (result.manga) {
-            this.logger.log(`[${this.websiteKey}] Successfully found manga details at: ${mangaUrl}`);
-            return result.manga;
-          }
-        } catch (urlError) {
-          this.logger.warn(`[${this.websiteKey}] Failed to scrape ${mangaUrl}:`, urlError.message);
-          continue; // Try next URL pattern
-        }
+      if (result.errors.length > 0) {
+        this.logger.warn(`[${this.websiteKey}] Scraping completed with errors:`, result.errors);
       }
 
-      this.logger.warn(`[${this.websiteKey}] All URL patterns failed for identifier: ${identifier}`);
-      return null;
+      this.logger.log(`[${this.websiteKey}] Manga details scraping result:`, !!result.manga);
+      return result.manga;
     } catch (error) {
       this.logger.error(`[${this.websiteKey}] Error fetching manga details:`, error.message);
 
@@ -124,118 +104,28 @@ export class GodmangaAdapter extends BaseMangaAdapter {
           return segments[segments.length - 1] || 'unknown';
         }
 
-        // Log current URL for debugging
-        console.log('Current URL:', window.location.href);
-        console.log('Page title:', document.title);
-        
-        // Try multiple selectors for title - GodManga might have different layouts
-        const titleSelectors = [
-          '#con3 div.series-synops strong',
-          '.series-title',
-          '.manga-title',
-          'h1.entry-title',
-          '.post-title h1',
-          '.series-info .title',
-          'h1'
-        ];
-        
-        let title = '';
-        let titleEl = null;
-        for (const selector of titleSelectors) {
-          titleEl = document.querySelector(selector);
-          if (titleEl) {
-            title = titleEl.textContent?.trim() || '';
-            if (title) {
-              console.log(`Found title with selector '${selector}':`, title);
-              break;
-            }
-          }
-        }
-        
+        // Extract basic manga information from GodManga structure
+        const titleEl = document.querySelector('#con3 div.series-synops strong');
+        const title = titleEl?.textContent?.trim();
+        console.log('Extracted title:', title);
         if (!title) {
-          console.error('No title found with any selector');
-          // Try to get page title as fallback
-          title = document.title?.replace(/.*?-\s*/, '')?.trim() || '';
-          console.log('Fallback title from document.title:', title);
-        }
-        
-        if (!title) {
-          console.error('Still no title found, returning null');
           return null;
         }
 
-        // Try multiple selectors for author
-        const authorSelectors = [
-          '#con3 div.series-info > ul > li:nth-child(3) > span',
-          '.series-author',
-          '.manga-author',
-          '.author',
-          '.series-info .author'
-        ];
-        
-        let author = '';
-        for (const selector of authorSelectors) {
-          const authorEl = document.querySelector(selector);
-          if (authorEl) {
-            author = authorEl.textContent?.trim() || '';
-            if (author) {
-              console.log(`Found author with selector '${selector}':`, author);
-              break;
-            }
-          }
-        }
+        const authorEl = document.querySelector('#con3 div.series-info > ul > li:nth-child(3) > span');
+        const author = authorEl?.textContent?.trim();
 
-        // Try multiple selectors for cover image
-        const coverSelectors = [
-          'div.series-thumb img',
-          '.series-image img',
-          '.manga-image img',
-          '.post-thumb img',
-          '.series-cover img',
-          'img.series-thumb'
-        ];
-        
-        let coverImage = '';
-        for (const selector of coverSelectors) {
-          const coverEl = document.querySelector(selector) as HTMLImageElement;
-          if (coverEl) {
-            coverImage = coverEl.src || coverEl.getAttribute('data-src') || '';
-            if (coverImage) {
-              console.log(`Found cover image with selector '${selector}':`, coverImage);
-              break;
-            }
-          }
-        }
+        const coverEl = document.querySelector('div.series-thumb img') as HTMLImageElement;
+        const coverImage = coverEl?.src;
 
         // Extract manga ID from URL
         const mangaId = extractSlugFromUrl(window.location.href);
 
-        // Extract chapters with multiple selector patterns
+        // Extract chapters - GodManga specific selectors
         const chapters: any[] = [];
-        const chapterSelectors = [
-          'div.series-chapter ul.series-chapterlist li',
-          '.chapter-list li',
-          '.chapters-list li',
-          '.episode-list li',
-          '.chapter-item',
-          'ul.chapters li',
-          '.wp-manga-chapter'
-        ];
-        
-        let chapterElements = null;
-        for (const selector of chapterSelectors) {
-          chapterElements = document.querySelectorAll(selector);
-          if (chapterElements.length > 0) {
-            console.log(`Found ${chapterElements.length} chapters with selector '${selector}'`);
-            break;
-          }
-        }
-        
-        if (!chapterElements || chapterElements.length === 0) {
-          console.warn('No chapters found with any selector');
-        }
+        const chapterElements = document.querySelectorAll('div.series-chapter ul.series-chapterlist li');
 
-        chapterElements?.forEach((chapterEl, index) => {
+        chapterElements.forEach((chapterEl, index) => {
           try {
             const chapterLinkEl = chapterEl.querySelector('a');
             const lastUpdatedEl = chapterEl.querySelector('span.date');

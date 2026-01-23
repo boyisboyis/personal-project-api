@@ -180,7 +180,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
 
     try {
       const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
-      
+
       const browser = await puppeteer.launch({
         headless: config.headless ?? true,
         timeout: isRailway ? 60000 : 30000, // Longer timeout for Railway
@@ -196,46 +196,44 @@ export class MangaPuppeteerService implements OnModuleDestroy {
           '--disable-default-apps',
           '--disable-plugins',
           '--disable-images', // Disable image loading to save memory
-          ...(isRailway ? [
-            '--disable-background-timer-throttling',
-            '--disable-backgrounding-occluded-windows',
-            '--disable-renderer-backgrounding',
-            '--disable-features=TranslateUI',
-            '--disable-web-security',
-            '--disable-features=VizDisplayCompositor',
-            '--no-zygote', // Keep this for Railway
-            '--max_old_space_size=384', // Reduced memory limit for Railway
-            '--disable-dev-tools'
-          ] : [
-            '--no-zygote'
-          ])
+          ...(isRailway
+            ? [
+                '--disable-background-timer-throttling',
+                '--disable-backgrounding-occluded-windows',
+                '--disable-renderer-backgrounding',
+                '--disable-features=TranslateUI',
+                '--disable-web-security',
+                '--disable-features=VizDisplayCompositor',
+                '--no-zygote', // Keep this for Railway
+                '--max_old_space_size=384', // Reduced memory limit for Railway
+                '--disable-dev-tools',
+              ]
+            : ['--no-zygote']),
         ],
         // Use system Chromium on Railway
-        executablePath: isRailway && process.env.PUPPETEER_EXECUTABLE_PATH 
-          ? process.env.PUPPETEER_EXECUTABLE_PATH 
-          : undefined,
+        executablePath: isRailway && process.env.PUPPETEER_EXECUTABLE_PATH ? process.env.PUPPETEER_EXECUTABLE_PATH : undefined,
       });
 
       // Test browser connection
       await browser.version();
-      
+
       // Reset failure count on successful launch
       this.consecutiveFailures = 0;
       this.lastBrowserLaunchError = null;
-      
+
       this.logger.debug(`Browser launched successfully: ${await browser.version()}`);
       return browser;
     } catch (error) {
       // Track consecutive failures
       this.consecutiveFailures++;
       this.lastBrowserLaunchError = new Date();
-      
+
       this.logger.error(`Failed to launch browser (attempt ${this.consecutiveFailures}):`, error);
-      
+
       if (this.consecutiveFailures >= this.maxConsecutiveFailures) {
         this.logger.error('Too many consecutive browser launch failures. Circuit breaker activated.');
       }
-      
+
       throw new Error(`Failed to launch browser: ${error.message}`);
     }
   }
@@ -266,7 +264,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
    */
   private async configurePage(page: Page, config: MangaScrapingConfig): Promise<void> {
     const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
-    
+
     // Set viewport
     if (config.viewport) {
       await page.setViewport(config.viewport);
@@ -299,12 +297,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
   /**
    * Scrape manga list from a webpage using specific adapter
    */
-  async scrapeMangaList(
-    url: string, 
-    limit: number,
-    adapter: MangaScraperAdapter, 
-    config: MangaScrapingConfig = {}
-  ): Promise<MangaScrapingResult> {
+  async scrapeMangaList(url: string, limit: number, adapter: MangaScraperAdapter, config: MangaScrapingConfig = {}): Promise<MangaScrapingResult> {
     const startTime = Date.now();
     let browser: Browser | null = null;
     let page: Page | null = null;
@@ -322,11 +315,18 @@ export class MangaPuppeteerService implements OnModuleDestroy {
 
       // Navigate to URL
       this.logger.debug(`[${adapter.websiteKey}] Navigating to: ${url}`);
-      
+
       await page.goto(url, {
         waitUntil: isRailway ? 'domcontentloaded' : 'networkidle0', // Faster loading on Railway
         timeout: config.timeout || (isRailway ? 90000 : 30000), // Extended timeout for Railway
       });
+
+      await page.setViewport({
+        width: 1200,
+        height: 2000,
+      });
+
+      await this.autoScroll(page);
 
       // Wait for content if selector specified
       if (config.waitForSelector) {
@@ -340,9 +340,9 @@ export class MangaPuppeteerService implements OnModuleDestroy {
         const delay = typeof config.delay === 'number' ? config.delay : Math.floor(Math.random() * (config.delay.max - config.delay.min + 1)) + config.delay.min;
         await new Promise(resolve => setTimeout(resolve, delay));
       }
-      
+
       console.log('Page loaded, starting data extraction.', await page.title());
-      
+
       // Extract manga data using adapter-specific logic
       const manga = await adapter.extractMangaData(page, url, limit);
       const scrapingTime = Date.now() - startTime;
@@ -386,11 +386,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
   /**
    * Scrape manga details from a specific manga page
    */
-  async scrapeMangaDetails(
-    url: string,
-    adapter: MangaScraperAdapter,
-    config: MangaScrapingConfig = {}
-  ): Promise<MangaDetailsScrapingResult> {
+  async scrapeMangaDetails(url: string, adapter: MangaScraperAdapter, config: MangaScrapingConfig = {}): Promise<MangaDetailsScrapingResult> {
     const startTime = Date.now();
     const errors: string[] = [];
     let browser: Browser | null = null;
@@ -398,7 +394,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
 
     try {
       this.logger.log(`[${adapter.websiteKey}] Starting manga details scraping from ${url}`);
-      
+
       browser = await this.getBrowser(config);
       page = await browser.newPage();
 
@@ -406,10 +402,17 @@ export class MangaPuppeteerService implements OnModuleDestroy {
       await this.configurePage(page, config);
 
       // Navigate to the page
-      const response = await page.goto(url, { 
+      const response = await page.goto(url, {
         waitUntil: 'domcontentloaded',
-        timeout: config.timeout || 30000 
+        timeout: config.timeout || 30000,
       });
+
+      await page.setViewport({
+        width: 1200,
+        height: 2000,
+      });
+
+      await this.autoScroll(page);
 
       if (!response || !response.ok()) {
         throw new Error(`Failed to load page: ${response?.status()} ${response?.statusText()}`);
@@ -417,17 +420,15 @@ export class MangaPuppeteerService implements OnModuleDestroy {
 
       // Apply delay if configured
       if (config.delay) {
-        const delay = typeof config.delay === 'number' 
-          ? config.delay 
-          : Math.random() * (config.delay.max - config.delay.min) + config.delay.min;
+        const delay = typeof config.delay === 'number' ? config.delay : Math.random() * (config.delay.max - config.delay.min) + config.delay.min;
         await new Promise(resolve => setTimeout(resolve, delay));
       }
 
       // Wait for selector if specified
       if (config.waitForSelector) {
         const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
-        await page.waitForSelector(config.waitForSelector, { 
-          timeout: config.timeout || (isRailway ? 30000 : 10000)
+        await page.waitForSelector(config.waitForSelector, {
+          timeout: config.timeout || (isRailway ? 30000 : 10000),
         });
       }
 
@@ -468,15 +469,11 @@ export class MangaPuppeteerService implements OnModuleDestroy {
       }
     }
   }
-  
+
   /**
    * Scrape chapter images from a specific chapter page
    */
-  async scrapeChapterImages(
-    url: string,
-    adapter: MangaScraperAdapter,
-    config: MangaScrapingConfig = {}
-  ): Promise<{ images: string[]; scrapingTime: number; errors: string[] }> {
+  async scrapeChapterImages(url: string, adapter: MangaScraperAdapter, config: MangaScrapingConfig = {}): Promise<{ images: string[]; scrapingTime: number; errors: string[] }> {
     const startTime = Date.now();
     const errors: string[] = [];
     let browser: Browser | null = null;
@@ -484,7 +481,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
 
     try {
       this.logger.log(`[${adapter.websiteKey}] Starting chapter images scraping from ${url}`);
-      
+
       browser = await this.getBrowser(config);
       page = await browser.newPage();
 
@@ -492,10 +489,17 @@ export class MangaPuppeteerService implements OnModuleDestroy {
       await this.configurePage(page, config);
 
       // Navigate to the page
-      const response = await page.goto(url, { 
+      const response = await page.goto(url, {
         waitUntil: 'domcontentloaded',
-        timeout: config.timeout || 30000 
+        timeout: config.timeout || 30000,
       });
+
+      await page.setViewport({
+        width: 1200,
+        height: 2000,
+      });
+
+      await this.autoScroll(page);
 
       if (!response || !response.ok()) {
         throw new Error(`Failed to load page: ${response?.status()} ${response?.statusText()}`);
@@ -503,9 +507,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
 
       // Apply delay if configured
       if (config.delay) {
-        const delay = typeof config.delay === 'number' 
-          ? config.delay 
-          : Math.random() * (config.delay.max - config.delay.min) + config.delay.min;
+        const delay = typeof config.delay === 'number' ? config.delay : Math.random() * (config.delay.max - config.delay.min) + config.delay.min;
         await new Promise(resolve => setTimeout(resolve, delay));
       }
 
@@ -515,7 +517,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
       }
 
       // Extract chapter images using adapter's method
-      const images = await (adapter as any).extractChapterImages?.(page, url) || [];
+      const images = (await (adapter as any).extractChapterImages?.(page, url)) || [];
       const scrapingTime = Date.now() - startTime;
 
       this.logger.log(`[${adapter.websiteKey}] Chapter images scraping completed: ${images.length} images in ${scrapingTime}ms`);
@@ -550,5 +552,24 @@ export class MangaPuppeteerService implements OnModuleDestroy {
         this.releaseBrowser(browser);
       }
     }
+  }
+
+  async autoScroll(page: Page) {
+    await page.evaluate(async () => {
+      await new Promise(resolve => {
+        var totalHeight = 0;
+        var distance = 100;
+        var timer = setInterval(() => {
+          var scrollHeight = document.body.scrollHeight;
+          window.scrollBy(0, distance);
+          totalHeight += distance;
+
+          if (totalHeight >= scrollHeight - window.innerHeight) {
+            clearInterval(timer);
+            resolve(null);
+          }
+        }, 100);
+      });
+    });
   }
 }

@@ -348,7 +348,7 @@ export class DokimoriAdapter extends BaseMangaAdapter {
                 id: mangaId,
                 title,
                 author: authorEl?.textContent?.trim(),
-                coverImage: imageEl?.getAttribute('src'),
+                coverImage: imageEl?.getAttribute('data-src'),
                 latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
                 lastUpdated: undefined, // Dokimori doesn't provide lastUpdated in this format
                 url: fullUrl,

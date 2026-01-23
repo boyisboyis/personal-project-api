@@ -321,12 +321,12 @@ export class MangaPuppeteerService implements OnModuleDestroy {
         timeout: config.timeout || (isRailway ? 90000 : 30000), // Extended timeout for Railway
       });
 
-      await page.setViewport({
-        width: 1200,
-        height: 2000,
-      });
+      // await page.setViewport({
+      //   width: 1200,
+      //   height: 800,
+      // });
 
-      await this.autoScroll(page);
+      // await this.autoScroll(page);
 
       // Wait for content if selector specified
       if (config.waitForSelector) {
@@ -407,12 +407,12 @@ export class MangaPuppeteerService implements OnModuleDestroy {
         timeout: config.timeout || 30000,
       });
 
-      await page.setViewport({
-        width: 1200,
-        height: 2000,
-      });
+      // await page.setViewport({
+      //   width: 1200,
+      //   height: 800,
+      // });
 
-      await this.autoScroll(page);
+      // await this.autoScroll(page);
 
       if (!response || !response.ok()) {
         throw new Error(`Failed to load page: ${response?.status()} ${response?.statusText()}`);
@@ -494,12 +494,12 @@ export class MangaPuppeteerService implements OnModuleDestroy {
         timeout: config.timeout || 30000,
       });
 
-      await page.setViewport({
-        width: 1200,
-        height: 2000,
-      });
+      // await page.setViewport({
+      //   width: 1200,
+      //   height: 800,
+      // });
 
-      await this.autoScroll(page);
+      // await this.autoScroll(page);
 
       if (!response || !response.ok()) {
         throw new Error(`Failed to load page: ${response?.status()} ${response?.statusText()}`);

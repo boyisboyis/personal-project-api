@@ -214,13 +214,25 @@ export class MangaAdapterService {
         return null;
       }
 
-      // Find the specific chapter by ID
-      const chapter = mangaDetails.chapters.find(ch => ch.id === chapterId);
+      // Find the specific chapter by ID and its index
+      const chapterIndex = mangaDetails.chapters.findIndex(ch => ch.id === chapterId);
       
-      if (!chapter) {
+      if (chapterIndex === -1) {
         this.logger.warn(`Chapter ${chapterId} not found in manga ${mangaKey} from ${adapter.websiteName}`);
         return null;
       }
+      
+      const chapter = mangaDetails.chapters[chapterIndex];
+
+      // Find previous and next chapters
+      const previousChapter = chapterIndex < mangaDetails.chapters.length - 1 
+        ? mangaDetails.chapters[chapterIndex + 1] 
+        : null;
+      const nextChapter = chapterIndex > 0 
+        ? mangaDetails.chapters[chapterIndex - 1] 
+        : null;
+
+      this.logger.log(`Chapter navigation: Previous: ${previousChapter?.title || 'none'}, Current: ${chapter.title}, Next: ${nextChapter?.title || 'none'}`);
 
       // Scrape chapter images if the adapter supports it
       let images: string[] = [];
@@ -249,7 +261,7 @@ export class MangaAdapterService {
 
       this.logger.log(`Successfully fetched chapter details for ${chapterId} from ${adapter.websiteName} in ${duration}ms`);
       
-      // Return chapter with additional manga context and proxied images
+      // Return chapter with additional manga context, proxied images, and navigation
       return {
         ...chapter,
         images,
@@ -260,6 +272,18 @@ export class MangaAdapterService {
           coverImage: proxyImageUrl(mangaDetails.coverImage || ''), // Proxy cover image too
           url: mangaDetails.url,
         },
+        previousChapter: previousChapter ? {
+          id: previousChapter.id,
+          title: previousChapter.title,
+          url: previousChapter.url,
+          chapterNumber: previousChapter.chapterNumber,
+        } : undefined,
+        nextChapter: nextChapter ? {
+          id: nextChapter.id,
+          title: nextChapter.title,
+          url: nextChapter.url,
+          chapterNumber: nextChapter.chapterNumber,
+        } : undefined,
       };
     } catch (error) {
       const duration = Date.now() - startTime;

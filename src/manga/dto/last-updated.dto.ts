@@ -75,6 +75,40 @@ export class ChapterDetailsDto extends ChapterDto {
     type: [String],
   })
   images: string[];
+
+  @ApiProperty({
+    description: 'Previous chapter information',
+    required: false,
+    example: {
+      id: 'ch-1089',
+      title: 'Chapter 1089',
+      url: 'https://example.com/manga/one-piece/chapter-1089',
+      chapterNumber: 1089
+    }
+  })
+  previousChapter?: {
+    id: string;
+    title: string;
+    url: string;
+    chapterNumber?: number;
+  };
+
+  @ApiProperty({
+    description: 'Next chapter information',
+    required: false,
+    example: {
+      id: 'ch-1091',
+      title: 'Chapter 1091', 
+      url: 'https://example.com/manga/one-piece/chapter-1091',
+      chapterNumber: 1091
+    }
+  })
+  nextChapter?: {
+    id: string;
+    title: string;
+    url: string;
+    chapterNumber?: number;
+  };
 }
 
 export class MangaItemDto {

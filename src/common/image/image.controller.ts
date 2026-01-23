@@ -45,7 +45,7 @@ export class ImageController {
     // Validate URL format
     try {
       const url = new URL(imageUrl);
-      
+
       // Security check: only allow certain domains
       const allowedDomains = [
         'god-manga.com',
@@ -55,12 +55,14 @@ export class ImageController {
         'www.dokimori.com',
         'tanuki-manga.com',
         'www.tanuki-manga.com',
-        'wp.com'
-      ];
-
-      const isAllowedDomain = allowedDomains.some(domain => 
-        url.hostname === domain || url.hostname.endsWith('.' + domain)
+        'wp.com',
+      ].concat(
+        Array(10)
+          .fill(1)
+          .map((_, i) => `server${i + 1}.webtoon168.com`)
       );
+
+      const isAllowedDomain = allowedDomains.some(domain => url.hostname === domain || url.hostname.endsWith('.' + domain));
 
       if (!isAllowedDomain) {
         throw new BadRequestException('Domain not allowed for image proxying');
@@ -68,14 +70,11 @@ export class ImageController {
 
       // Validate file extension (optional security measure)
       const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
-      const hasValidExtension = validExtensions.some(ext => 
-        url.pathname.toLowerCase().endsWith(ext)
-      );
+      const hasValidExtension = validExtensions.some(ext => url.pathname.toLowerCase().endsWith(ext));
 
       if (!hasValidExtension) {
         this.logger.warn(`Suspicious file extension in URL: ${imageUrl}`);
       }
-
     } catch (error) {
       throw new BadRequestException('Invalid image URL format');
     }
@@ -100,7 +99,7 @@ export class ImageController {
       // Handle non-success HTTP status codes
       if (response.status >= 400) {
         this.logger.warn(`Received HTTP ${response.status} for image: ${imageUrl}`);
-        
+
         if (response.status === 403) {
           throw new BadRequestException('Image access forbidden - may be protected by hotlink protection');
         } else if (response.status === 404) {
@@ -117,19 +116,19 @@ export class ImageController {
 
       // Get content type from response or determine from URL
       let contentType = response.headers['content-type'] || 'image/jpeg';
-      
+
       if (!contentType.startsWith('image/')) {
         // Determine content type from URL extension
         const url = new URL(imageUrl);
         const extension = url.pathname.toLowerCase().split('.').pop();
         const mimeTypes: Record<string, string> = {
-          'jpg': 'image/jpeg',
-          'jpeg': 'image/jpeg',
-          'png': 'image/png',
-          'gif': 'image/gif',
-          'webp': 'image/webp',
-          'bmp': 'image/bmp',
-          'svg': 'image/svg+xml',
+          jpg: 'image/jpeg',
+          jpeg: 'image/jpeg',
+          png: 'image/png',
+          gif: 'image/gif',
+          webp: 'image/webp',
+          bmp: 'image/bmp',
+          svg: 'image/svg+xml',
         };
         contentType = (extension && mimeTypes[extension]) || 'image/jpeg';
       }
@@ -147,10 +146,9 @@ export class ImageController {
       res.send(Buffer.from(response.data));
 
       this.logger.debug(`Successfully proxied image: ${imageUrl} (${contentType})`);
-
     } catch (error) {
       this.logger.error(`Failed to proxy image ${imageUrl}:`, error.message);
-      
+
       if (error.response?.status) {
         throw new HttpException(
           `Failed to fetch image: ${error.response.status} ${error.response.statusText}`,
@@ -168,21 +166,21 @@ export class ImageController {
 
   private async fetchImageWithHeaders(imageUrl: string, strategy: 'full' | 'minimal') {
     const parsedUrl = new URL(imageUrl);
-    
+
     let headers;
     if (strategy === 'full') {
       headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br',
         'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
+        Pragma: 'no-cache',
         'Sec-Fetch-Dest': 'image',
         'Sec-Fetch-Mode': 'no-cors',
         'Sec-Fetch-Site': 'cross-site',
-        'Referer': parsedUrl.origin + '/',
-        'Origin': parsedUrl.origin,
+        Referer: parsedUrl.origin + '/',
+        Origin: parsedUrl.origin,
         'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
         'Sec-Ch-Ua-Mobile': '?0',
         'Sec-Ch-Ua-Platform': '"Windows"',
@@ -192,8 +190,30 @@ export class ImageController {
       // Minimal headers strategy - sometimes less is more
       headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': '*/*',
-        'Referer': parsedUrl.origin + '/',
+        Accept: '*/*',
+        Referer: parsedUrl.origin + '/',
+      };
+    }
+
+    const godDomain = Array(10)
+      .fill(1)
+      .map((_, i) => `server${i + 1}.webtoon168.com`);
+    const isGodManga = godDomain.some(domain => parsedUrl.hostname === domain || parsedUrl.hostname.endsWith('.' + domain));
+
+    if (isGodManga) {
+      headers = {
+        accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'accept-language': 'en-US,en;q=0.9,th;q=0.8',
+        priority: 'i',
+        referer: 'https://god-manga.com/',
+        'sec-ch-ua': '"Google Chrome";v="143", "Chromium";v="143", "Not A(Brand";v="24"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"macOS"',
+        'sec-fetch-dest': 'image',
+        'sec-fetch-mode': 'no-cors',
+        'sec-fetch-site': 'cross-site',
+        'sec-fetch-storage-access': 'none',
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
       };
     }
 

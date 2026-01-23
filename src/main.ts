@@ -22,7 +22,18 @@ async function bootstrap() {
   app.enableCors({
     origin: process.env.CORS_ORIGIN || '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: [
+      'Content-Type', 
+      'Authorization', 
+      'Cache-Control', 
+      'Pragma',
+      'Accept',
+      'Accept-Language',
+      'Accept-Encoding',
+      'User-Agent',
+      'X-Requested-With',
+    ],
+    credentials: true,
   });
 
   // Global validation pipe

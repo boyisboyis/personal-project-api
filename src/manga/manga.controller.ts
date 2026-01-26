@@ -26,7 +26,7 @@ export class MangaController {
     required: true,
     description: 'Website key to fetch from (optional). If not provided, aggregates from all websites.',
     example: 'niceoppai',
-    enum: ['niceoppai', 'dokimori', 'godmanga', 'tanuki', 'ntrmanga', 'mangaisekaithai'],
+    enum: ['niceoppai', 'dokimori', 'godmanga', 'tanuki', 'ntrmanga', 'mangaisekaithai', 'manga-neko'],
   })
   @ApiQuery({
     name: 'limit',
@@ -52,7 +52,7 @@ export class MangaController {
     required: true,
     description: 'Website key to fetch from',
     example: 'niceoppai',
-    enum: ['niceoppai', 'dokimori', 'godmanga', 'tanuki', 'ntrmanga', 'mangaisekaithai'],
+    enum: ['niceoppai', 'dokimori', 'godmanga', 'tanuki', 'ntrmanga', 'mangaisekaithai', 'manga-neko'],
   })
   @ApiQuery({ name: 'page', required: false, description: 'Page number (starts from 1)', example: 1, type: 'number' })
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
@@ -71,7 +71,7 @@ export class MangaController {
     required: true,
     description: 'Website key to fetch from',
     example: 'niceoppai',
-    enum: ['niceoppai', 'dokimori', 'godmanga', 'tanuki', 'ntrmanga', 'mangaisekaithai'],
+    enum: ['niceoppai', 'dokimori', 'godmanga', 'tanuki', 'ntrmanga', 'mangaisekaithai', 'manga-neko'],
   })
   @ApiParam({
     name: 'mangaKey',
@@ -99,7 +99,7 @@ export class MangaController {
     required: true,
     description: 'Website key to fetch from',
     example: 'niceoppai',
-    enum: ['niceoppai', 'dokimori', 'godmanga', 'tanuki', 'ntrmanga', 'mangaisekaithai'],
+    enum: ['niceoppai', 'dokimori', 'godmanga', 'tanuki', 'ntrmanga', 'mangaisekaithai', 'manga-neko'],
   })
   @ApiParam({
     name: 'mangaKey',

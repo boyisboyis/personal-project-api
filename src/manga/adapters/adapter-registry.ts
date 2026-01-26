@@ -7,6 +7,7 @@ import { TanukiAdapter } from '@/manga/adapters/tanuki-adapter';
 import { NtrmangaAdapter } from '@/manga/adapters/ntrmanga-adapter';
 import { MangaisekkaithaiAdapter } from '@/manga/adapters/mangaisekaithai-adapter';
 import { MangaNekoAdapter } from '@/manga/adapters/manga-neko-adapter';
+import { GodDoujinAdapter } from '@/manga/adapters/god-doujin-adapter';
 
 @Injectable()
 export class AdapterRegistry {
@@ -20,7 +21,8 @@ export class AdapterRegistry {
     private readonly tanukiAdapter: TanukiAdapter,
     private readonly ntrmangaAdapter: NtrmangaAdapter,
     private readonly mangaisekkaithaiAdapter: MangaisekkaithaiAdapter,
-    private readonly mangaNekoAdapter: MangaNekoAdapter
+    private readonly mangaNekoAdapter: MangaNekoAdapter,
+    private readonly godDoujinAdapter: GodDoujinAdapter
   ) {
     this.registerAdapters();
   }
@@ -34,6 +36,7 @@ export class AdapterRegistry {
     this.registerAdapter(this.ntrmangaAdapter);
     this.registerAdapter(this.mangaisekkaithaiAdapter);
     this.registerAdapter(this.mangaNekoAdapter);
+    this.registerAdapter(this.godDoujinAdapter);
 
     this.logger.log(`Registered ${this.adapters.size} manga adapters: ${Array.from(this.adapters.keys()).join(', ')}`);
   }

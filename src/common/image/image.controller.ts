@@ -58,7 +58,8 @@ export class ImageController {
         'wp.com',
         'ntr-manga.com',
         'mangaisekaithai.com',
-        'manga-neko.com'
+        'manga-neko.com',
+        'god-doujin.com',
       ].concat(
         Array(10)
           .fill(1)

@@ -13,6 +13,7 @@ import { TanukiAdapter } from '@/manga/adapters/tanuki-adapter';
 import { NtrmangaAdapter } from '@/manga/adapters/ntrmanga-adapter';
 import { MangaisekkaithaiAdapter } from '@/manga/adapters/mangaisekaithai-adapter';
 import { MangaNekoAdapter } from '@/manga/adapters/manga-neko-adapter';
+import { GodDoujinAdapter } from '@/manga/adapters/god-doujin-adapter';
 import { HealthController } from '@/common/health/health.controller';
 import { HealthService } from '@/common/health/health.service';
 
@@ -38,6 +39,7 @@ import { HealthService } from '@/common/health/health.service';
     NtrmangaAdapter,
     MangaisekkaithaiAdapter,
     MangaNekoAdapter,
+    GodDoujinAdapter,
     HealthService,
   ],
   exports: [MangaService, AdapterRegistry, HealthService],

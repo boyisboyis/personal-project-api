@@ -11,6 +11,7 @@ import { DokimoriAdapter } from '@/manga/adapters/dokimori-adapter';
 import { GodmangaAdapter } from '@/manga/adapters/godmanga-adapter';
 import { TanukiAdapter } from '@/manga/adapters/tanuki-adapter';
 import { NtrmangaAdapter } from '@/manga/adapters/ntrmanga-adapter';
+import { MangaisekkaithaiAdapter } from '@/manga/adapters/mangaisekaithai-adapter';
 import { HealthController } from '@/common/health/health.controller';
 import { HealthService } from '@/common/health/health.service';
 
@@ -34,6 +35,7 @@ import { HealthService } from '@/common/health/health.service';
     GodmangaAdapter, 
     TanukiAdapter, 
     NtrmangaAdapter,
+    MangaisekkaithaiAdapter,
     HealthService,
   ],
   exports: [MangaService, AdapterRegistry, HealthService],

@@ -57,6 +57,7 @@ export class ImageController {
         'www.tanuki-manga.com',
         'wp.com',
         'ntr-manga.com',
+        'mangaisekaithai.com'
       ].concat(
         Array(10)
           .fill(1)

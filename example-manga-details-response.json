@@ -1,0 +1,25 @@
+{
+  "id": "example-manga",
+  "title": "Example Manga",
+  "author": "Example Author",
+  "coverImage": "https://proxy.example.com/image/cover.jpg",
+  "latestChapter": 25,
+  "lastUpdated": "2026-01-26T00:00:00.000Z",
+  "url": "https://example.com/manga/example-manga",
+  "chapters": [
+    {
+      "id": "ch-25",
+      "title": "Chapter 25",
+      "url": "https://example.com/manga/example-manga/chapter-25",
+      "chapterNumber": 25,
+      "publishedAt": "2026-01-26T00:00:00.000Z"
+    },
+    {
+      "id": "ch-24",
+      "title": "Chapter 24",
+      "url": "https://example.com/manga/example-manga/chapter-24",
+      "chapterNumber": 24,
+      "publishedAt": "2026-01-25T00:00:00.000Z"
+    }
+  ]
+}

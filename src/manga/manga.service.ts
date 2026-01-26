@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupportedWebsiteDto } from '@/manga/dto/supported-website.dto';
 import { WebsiteLastUpdatedPaginatedDto } from '@/manga/dto/last-updated.dto';
+import { MangaDetailsDto } from '@/manga/dto/manga-details.dto';
 import { MangaAdapterService } from '@/manga/services/manga-adapter.service';
 
 @Injectable()
@@ -53,7 +54,7 @@ export class MangaService {
   /**
    * Get manga details by website and manga key
    */
-  async getMangaDetails(webKey: string, mangaKey: string) {
+  async getMangaDetails(webKey: string, mangaKey: string): Promise<MangaDetailsDto | null> {
     return this.mangaAdapterService.getMangaDetails(webKey, mangaKey);
   }
 

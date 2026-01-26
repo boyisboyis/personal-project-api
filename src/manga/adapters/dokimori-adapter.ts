@@ -146,9 +146,10 @@ export class DokimoriAdapter extends BaseMangaAdapter {
 
         const authorEl = document.querySelector('div.summary-content > div.author-content');
         const author = authorEl?.textContent?.trim();
-
+        //  div.summary_image > a > img
+        // 
         const coverEl = document.querySelector('.summary_image img') as HTMLImageElement;
-        const coverImage = coverEl?.src;
+        const coverImage = coverEl?.getAttribute('data-src') || coverEl?.src;
 
         // Extract manga ID from URL
         const mangaId = extractSlugFromUrl(window.location.href);

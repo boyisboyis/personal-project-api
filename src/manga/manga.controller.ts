@@ -4,6 +4,7 @@ import { Throttle } from '@nestjs/throttler';
 
 import { MangaService } from '@/manga/manga.service';
 import { WebsiteLastUpdatedDto, WebsiteLastUpdatedPaginatedDto, ChapterDetailsDto } from '@/manga/dto/last-updated.dto';
+import { MangaDetailsDto } from '@/manga/dto/manga-details.dto';
 
 @ApiTags('Manga')
 @Controller('manga')
@@ -78,9 +79,14 @@ export class MangaController {
     description: 'Manga key/slug identifier from the website',
     example: 'glory-hole',
   })
+  @ApiResponse({
+    status: 200,
+    description: 'Manga details retrieved successfully',
+    type: MangaDetailsDto,
+  })
   @Throttle({ default: { limit: 15, ttl: 60000 } }) // 15 requests per minute
   @Get(':web/details/:mangaKey')
-  async getMangaDetails(@Param('web') webKey: string, @Param('mangaKey') mangaKey: string) {
+  async getMangaDetails(@Param('web') webKey: string, @Param('mangaKey') mangaKey: string): Promise<MangaDetailsDto | null> {
     return this.mangaService.getMangaDetails(webKey, mangaKey);
   }
 

@@ -280,8 +280,8 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
 
         const authorEl = document.querySelector('.author, .series-author, [class*="author"]');
         const author = authorEl?.textContent?.trim();
-
-        const coverEl = document.querySelector('.series-image img, .manga-cover img, .cover img') as HTMLImageElement;
+        // #sct_content > div > div.wpm_pag.mng_det > div.mng_ifo > div.cvr_ara > img
+        const coverEl = document.querySelector('div.mng_ifo > div.cvr_ara > img') as HTMLImageElement;
         const coverImage = coverEl?.src;
 
         // Extract manga ID from URL

@@ -3,6 +3,7 @@ import { AdapterRegistry } from '@/manga/adapters/adapter-registry';
 import { WebsiteLastUpdatedDto } from '@/manga/dto/last-updated.dto';
 import { ChapterImageDto } from '@/manga/dto/chapter-image.dto';
 import { SupportedWebsiteDto } from '@/manga/dto/supported-website.dto';
+import { MangaDetailsDto, toMangaDetailsDto } from '@/manga/dto/manga-details.dto';
 import { MetricsService } from '@/common/monitoring/metrics.service';
 import { proxyImageUrls, proxyImageUrl } from '@/common/image/image.utils';
 import { convertUrlsToChapterImages } from '@/manga/utils/image-converter.utils';
@@ -151,7 +152,7 @@ export class MangaAdapterService {
   /**
    * Get manga details from specific website using manga key
    */
-  async getMangaDetails(websiteKey: string, mangaKey: string) {
+  async getMangaDetails(websiteKey: string, mangaKey: string): Promise<MangaDetailsDto | null> {
     this.logger.log(`Fetching manga details for ${mangaKey} from ${websiteKey}`);
 
     const adapter = this.adapterRegistry.getAdapter(websiteKey);
@@ -179,13 +180,14 @@ export class MangaAdapterService {
 
       this.logger.log(`Successfully fetched manga details for ${mangaKey} from ${adapter.websiteName} in ${duration}ms`);
       
-      // Apply image proxy to cover image
+      // Apply image proxy to cover image and convert to MangaDetailsDto
       const proxiedMangaDetails = {
         ...mangaDetails,
         coverImage: mangaDetails.coverImage ? proxyImageUrl(mangaDetails.coverImage) : undefined,
       };
       
-      return proxiedMangaDetails;
+      // Convert to MangaDetailsDto which has coverImage at root level
+      return toMangaDetailsDto(proxiedMangaDetails);
     } catch (error) {
       const duration = Date.now() - startTime;
       this.metricsService.recordScrape(adapter.websiteKey, duration, false);

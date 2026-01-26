@@ -108,6 +108,12 @@ export class NtrmangaAdapter extends BaseMangaAdapter {
    * Extract manga details including chapters from manga detail page
    */
   async extractMangaDetails(page: Page, _url: string): Promise<MangaItemDto | null> {
+    page.on('console', async msg => {
+      const msgArgs = msg.args();
+      for (let i = 0; i < msgArgs.length; ++i) {
+        console.log(await msgArgs[i].jsonValue());
+      }
+    });
     return await page.evaluate((_websiteUrl: string) => {
       // Function to extract slug from URL
       function extractSlugFromUrl(url: string): string {
@@ -173,7 +179,7 @@ export class NtrmangaAdapter extends BaseMangaAdapter {
         }
 
         // Try multiple selectors for cover image
-        const coverSelectors = ['.manga-image img', '.post-thumb img', '.entry-thumb img', '.series-thumb img', '.cover img', 'img.manga-cover'];
+        const coverSelectors = ['.thumbook .thumb img'];
 
         let coverImage = '';
         for (const selector of coverSelectors) {
@@ -223,7 +229,6 @@ export class NtrmangaAdapter extends BaseMangaAdapter {
 
               // Extract chapter ID from chapter URL
               const chapterId = extractSlugFromUrl(chapterUrl);
-
               chapters.push({
                 id: chapterId,
                 title: chapterTitle,

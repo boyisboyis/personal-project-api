@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { MangaScraperAdapter } from '@/manga/adapters/base/manga-scraper.interface';
 import { BaseMangaAdapter } from '@/manga/adapters/base/base-manga-adapter';
 import { MangaItemDto } from '@/manga/dto/last-updated.dto';
+import { ChapterImageDto } from '@/manga/dto/chapter-image.dto';
 import { Page } from 'puppeteer';
 import { MangaPuppeteerService } from '@/manga/services/manga-puppeteer-improved.service';
 
@@ -291,10 +292,10 @@ export class MangaisekkaithaiAdapter extends BaseMangaAdapter implements MangaSc
   /**
    * Extract chapter images from chapter page
    */
-  async extractChapterImages(page: Page, _chapterUrl: string): Promise<string[]> {
+  async extractChapterImages(page: Page, _chapterUrl: string): Promise<ChapterImageDto[]> {
     return await page.evaluate(() => {
       try {
-        const images: string[] = [];
+        const images: ChapterImageDto[] = [];
 
         // Manga Isekai Thai specific selectors
         const imageSelectors = [
@@ -311,17 +312,49 @@ export class MangaisekkaithaiAdapter extends BaseMangaAdapter implements MangaSc
 
         imageSelectors.forEach(selector => {
           const imgElements = document.querySelectorAll(selector) as NodeListOf<HTMLImageElement>;
-          imgElements.forEach(img => {
+          imgElements.forEach((img, index) => {
             const src = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
-            if (src && !images.includes(src)) {
-              images.push(src);
+            if (src && !images.some(image => image.url === src)) {
+              // Check if this is a canvas-based image (encrypted/protected content)
+              const isCanvasType = img.classList.contains('encrypted') || 
+                                   img.hasAttribute('data-encrypted') ||
+                                   src.includes('encrypted') ||
+                                   src.includes('protected');
+
+              const image: ChapterImageDto = {
+                url: src,
+                type: isCanvasType ? 'canvas' : 'image',
+              };
+
+              if (isCanvasType) {
+                image.html = `<canvas id="manga-page-${index}" class="manga-page-canvas"></canvas>`;
+                image.script = `<script>
+                  (function() {
+                    const canvas = document.getElementById('manga-page-${index}');
+                    if (canvas) {
+                      const ctx = canvas.getContext('2d');
+                      const img = new Image();
+                      img.crossOrigin = 'anonymous';
+                      img.onload = function() {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+                      };
+                      img.src = '${src}';
+                    }
+                  })();
+                </script>`;
+              }
+
+              images.push(image);
             }
           });
         });
 
         // Filter out ads and small images
-        return images.filter(src => {
-          return !src.includes('ads') && !src.includes('banner') && !src.includes('logo');
+        return images.filter(image => {
+          const url = image.url;
+          return !url.includes('ads') && !url.includes('banner') && !url.includes('logo');
         });
       } catch (error) {
         console.error('Error extracting chapter images:', error);

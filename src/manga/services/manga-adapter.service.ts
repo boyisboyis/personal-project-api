@@ -1,9 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AdapterRegistry } from '@/manga/adapters/adapter-registry';
 import { WebsiteLastUpdatedDto } from '@/manga/dto/last-updated.dto';
+import { ChapterImageDto } from '@/manga/dto/chapter-image.dto';
 import { SupportedWebsiteDto } from '@/manga/dto/supported-website.dto';
 import { MetricsService } from '@/common/monitoring/metrics.service';
 import { proxyImageUrls, proxyImageUrl } from '@/common/image/image.utils';
+import { convertUrlsToChapterImages } from '@/manga/utils/image-converter.utils';
+import { AdapterWrapper } from '@/manga/adapters/enhanced-adapter.interface';
 
 @Injectable()
 export class MangaAdapterService {
@@ -235,16 +238,24 @@ export class MangaAdapterService {
       this.logger.log(`Chapter navigation: Previous: ${previousChapter?.title || 'none'}, Current: ${chapter.title}, Next: ${nextChapter?.title || 'none'}`);
 
       // Scrape chapter images if the adapter supports it
-      let images: string[] = [];
-      if (typeof (adapter as any).extractChapterImages === 'function') {
+      let images: ChapterImageDto[] = [];
+      if (typeof (adapter as any).extractChapterImages === 'function' || typeof (adapter as any).extractChapterImagesEnhanced === 'function') {
         try {
           const puppeteerService = (adapter as any).puppeteerService;
           if (puppeteerService) {
             const scrapingConfig = (adapter as any).getDefaultScrapingConfig?.() || {};
+            
+            // Scrape images using enhanced service that returns ChapterImageDto[]
             const imageResult = await puppeteerService.scrapeChapterImages(chapter.url, adapter, scrapingConfig);
-            // Apply image proxy to all scraped images
-            images = proxyImageUrls(imageResult.images);
-            this.logger.log(`Successfully scraped ${imageResult.images.length} images for chapter ${chapterId} (proxied)`);
+            
+            // The result should now always be ChapterImageDto[] due to AdapterWrapper
+            if (imageResult.images && imageResult.images.length > 0) {
+              images = (imageResult.images as ChapterImageDto[]).map(img => ({
+                ...img,
+                url: proxyImageUrl(img.url), // Apply proxy to URLs
+              }));
+              this.logger.log(`Successfully scraped ${images.length} images for chapter ${chapterId} (proxied)`);
+            }
           }
         } catch (error) {
           this.logger.warn(`Failed to scrape images for chapter ${chapterId}:`, error.message);

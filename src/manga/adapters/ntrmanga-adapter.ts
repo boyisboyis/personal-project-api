@@ -3,6 +3,7 @@ import { BaseMangaAdapter } from '@/manga/adapters/base/base-manga-adapter';
 import { MangaItemDto } from '@/manga/dto/last-updated.dto';
 import { MangaPuppeteerService } from '@/manga/services/manga-puppeteer-improved.service';
 import { Page } from 'puppeteer';
+import { ChapterImageDto } from '../dto/chapter-image.dto';
 
 @Injectable()
 export class NtrmangaAdapter extends BaseMangaAdapter {
@@ -67,7 +68,7 @@ export class NtrmangaAdapter extends BaseMangaAdapter {
 
       for (const mangaUrl of urlPatterns) {
         this.logger.log(`[${this.websiteKey}] Trying URL pattern: ${mangaUrl}`);
-        
+
         try {
           const scrapingConfig = {
             ...this.getDefaultScrapingConfig(),
@@ -75,7 +76,7 @@ export class NtrmangaAdapter extends BaseMangaAdapter {
             waitForSelector: 'body', // More generic selector
             timeout: isRailway ? 90000 : 30000,
           };
-          
+
           const result = await this.puppeteerService.scrapeMangaDetails(mangaUrl, this, scrapingConfig);
 
           if (result.errors.length > 0) {
@@ -124,22 +125,13 @@ export class NtrmangaAdapter extends BaseMangaAdapter {
       }
 
       try {
-
         // Log current URL for debugging
         console.log('Current URL:', window.location.href);
         console.log('Page title:', document.title);
-        
+
         // Try multiple selectors for title - NTR Manga might have different layouts
-        const titleSelectors = [
-          '.entry-title',
-          'h1.entry-title',
-          '.post-title h1',
-          '.manga-title',
-          '.series-title',
-          'h1',
-          '.title'
-        ];
-        
+        const titleSelectors = ['.entry-title', 'h1.entry-title', '.post-title h1', '.manga-title', '.series-title', 'h1', '.title'];
+
         let title = '';
         let titleEl = null;
         for (const selector of titleSelectors) {
@@ -152,28 +144,22 @@ export class NtrmangaAdapter extends BaseMangaAdapter {
             }
           }
         }
-        
+
         if (!title) {
           console.error('No title found with any selector');
           // Try to get page title as fallback
           title = document.title?.replace(/.*?-\s*/, '')?.trim() || '';
           console.log('Fallback title from document.title:', title);
         }
-        
+
         if (!title) {
           console.error('Still no title found, returning null');
           return null;
         }
 
         // Try multiple selectors for author
-        const authorSelectors = [
-          '.author',
-          '.manga-author',
-          '.series-author',
-          '.entry-meta .author',
-          '.post-author'
-        ];
-        
+        const authorSelectors = ['.author', '.manga-author', '.series-author', '.entry-meta .author', '.post-author'];
+
         let author = '';
         for (const selector of authorSelectors) {
           const authorEl = document.querySelector(selector);
@@ -187,15 +173,8 @@ export class NtrmangaAdapter extends BaseMangaAdapter {
         }
 
         // Try multiple selectors for cover image
-        const coverSelectors = [
-          '.manga-image img',
-          '.post-thumb img',
-          '.entry-thumb img',
-          '.series-thumb img',
-          '.cover img',
-          'img.manga-cover'
-        ];
-        
+        const coverSelectors = ['.manga-image img', '.post-thumb img', '.entry-thumb img', '.series-thumb img', '.cover img', 'img.manga-cover'];
+
         let coverImage = '';
         for (const selector of coverSelectors) {
           const coverEl = document.querySelector(selector) as HTMLImageElement;
@@ -213,11 +192,8 @@ export class NtrmangaAdapter extends BaseMangaAdapter {
 
         // Extract chapters with multiple selector patterns
         const chapters: any[] = [];
-        const chapterSelectors = [
-         '#chapterlist li'
-          
-        ];
-        
+        const chapterSelectors = ['#chapterlist li'];
+
         let chapterElements = null;
         for (const selector of chapterSelectors) {
           chapterElements = document.querySelectorAll(selector);
@@ -226,7 +202,7 @@ export class NtrmangaAdapter extends BaseMangaAdapter {
             break;
           }
         }
-        
+
         if (!chapterElements || chapterElements.length === 0) {
           console.warn('No chapters found with any selector');
         }
@@ -281,37 +257,59 @@ export class NtrmangaAdapter extends BaseMangaAdapter {
   /**
    * Extract chapter images from chapter page
    */
-  async extractChapterImages(page: Page, _chapterUrl: string): Promise<string[]> {
+  async extractChapterImages(page: Page, _chapterUrl: string): Promise<ChapterImageDto[]> {
+    page.on('console', async msg => {
+      const msgArgs = msg.args();
+      for (let i = 0; i < msgArgs.length; ++i) {
+        console.log(await msgArgs[i].jsonValue());
+      }
+    });
     return await page.evaluate(() => {
       try {
-        const images: string[] = [];
-        
+        const images: ChapterImageDto[] = [];
+
         // NTR Manga specific selectors
-        const imageSelectors = [
-          '.reading-content img',
-          '.reader-area img',
-          '#readerarea img',
-          '.chapter-content img',
-          '.entry-content img',
-          'img[data-src]',
-          'img.wp-manga-chapter-img',
-          '.comic-page img',
-          '.page-image img'
-        ];
+        const imageSelectors = ['#readerarea img, #readerarea canvas'];
+        const query = document.querySelectorAll('#readerarea > *');
+        if (query.length === 0) {
+          console.warn('No images found in reader area');
+        }
+        console.log(`Found ${query.length} elements in reader area`);
+        for (let i = 0; i < query.length; i++) {
+          const el = query[i] as HTMLImageElement;
+          if (el.tagName.toLowerCase() === 'img') {
+            const src = el.src || el.getAttribute('data-src') || el.getAttribute('data-lazy-src');
+            if (src && !images.some(image => image.url === src)) {
+              images.push({ url: src, type: 'image' });
+            }
+          } else if (el.tagName.toLowerCase() === 'canvas') {
+            // Handle canvas elements if needed
+            console.log('Found canvas element, skipping for now');
+            images.push({
+              url: '', // Canvas images may need special handling
+              type: 'canvas',
+              html: el.outerHTML,
+              script: (query[i + 1].getHTML() || '').replace(/jQuery\(document\).ready\(function\(\)\{/, '').replace(/\n\}\);/, ''), // Assuming next sibling is script
+            });
+          } else if (el.tagName.toLowerCase() === 'script') {
+            // Some images might be loaded via scripts
+            console.log('Found script element, skipping for now');
+          }
+        }
 
         imageSelectors.forEach(selector => {
           const imgElements = document.querySelectorAll(selector) as NodeListOf<HTMLImageElement>;
           imgElements.forEach(img => {
             const src = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
-            if (src && !images.includes(src)) {
-              images.push(src);
+            if (src && !images.some(image => image.url === src)) {
+              images.push({ url: src, type: 'image' });
             }
           });
         });
 
         // Filter out ads and small images
-        return images.filter(src => {
-          return !src.includes('ads') && !src.includes('banner') && !src.includes('logo');
+        return images.filter(image => {
+          return !image.url.includes('ads') && !image.url.includes('banner') && !image.url.includes('logo');
         });
       } catch (error) {
         console.error('Error extracting chapter images:', error);
@@ -387,7 +385,7 @@ export class NtrmangaAdapter extends BaseMangaAdapter {
           lastUpdated: '.epxdate',
         };
 
-        // Helper function to extract slug from URL  
+        // Helper function to extract slug from URL
         function extractSlugFromUrl(url: string): string {
           try {
             if (!url) return '';
@@ -428,7 +426,7 @@ export class NtrmangaAdapter extends BaseMangaAdapter {
           } catch (error) {
             return `${websiteKey}-error-${Date.now()}`;
           }
-        };
+        }
 
         const containers = document.querySelectorAll(selectors.container);
         console.log(`Found ${containers.length} manga containers on the page. Limit: ${limit}`);

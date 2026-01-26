@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { ChapterImageDto } from './chapter-image.dto';
 
 export class ChapterDto {
 
@@ -36,14 +37,22 @@ export class ChapterDto {
 
   @ApiProperty({
     example: [
-      'https://example.com/manga/one-piece/chapter-1090/page-1.jpg',
-      'https://example.com/manga/one-piece/chapter-1090/page-2.jpg'
+      {
+        url: 'https://example.com/manga/one-piece/chapter-1090/page-1.jpg',
+        type: 'image'
+      },
+      {
+        url: 'https://example.com/manga/one-piece/chapter-1090/page-2.jpg',
+        type: 'canvas',
+        html: '<canvas id="page2" width="800" height="1200"></canvas>',
+        script: '<script>// Canvas rendering script</script>'
+      }
     ],
-    description: 'List of chapter page images',
+    description: 'List of chapter page images with metadata',
     required: false,
-    type: [String],
+    type: [ChapterImageDto],
   })
-  images?: string[];
+  images?: ChapterImageDto[];
 }
 
 export class ChapterDetailsDto extends ChapterDto {
@@ -67,14 +76,25 @@ export class ChapterDetailsDto extends ChapterDto {
 
   @ApiProperty({
     example: [
-      'https://example.com/manga/one-piece/chapter-1090/page-1.jpg',
-      'https://example.com/manga/one-piece/chapter-1090/page-2.jpg',
-      'https://example.com/manga/one-piece/chapter-1090/page-3.jpg'
+      {
+        url: 'https://example.com/manga/one-piece/chapter-1090/page-1.jpg',
+        type: 'image'
+      },
+      {
+        url: 'https://example.com/manga/one-piece/chapter-1090/page-2.jpg',
+        type: 'canvas',
+        html: '<canvas id="page2" width="800" height="1200"></canvas>',
+        script: '<script>// Canvas rendering script</script>'
+      },
+      {
+        url: 'https://example.com/manga/one-piece/chapter-1090/page-3.jpg',
+        type: 'image'
+      }
     ],
-    description: 'List of chapter page images',
-    type: [String],
+    description: 'List of chapter page images with metadata',
+    type: [ChapterImageDto],
   })
-  images: string[];
+  images: ChapterImageDto[];
 
   @ApiProperty({
     description: 'Previous chapter information',

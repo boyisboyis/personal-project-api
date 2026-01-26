@@ -1,7 +1,9 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { MangaItemDto } from '@/manga/dto/last-updated.dto';
+import { ChapterImageDto } from '@/manga/dto/chapter-image.dto';
 import { MangaScraperAdapter } from '@/manga/adapters/base/manga-scraper.interface';
+import { AdapterWrapper } from '@/manga/adapters/enhanced-adapter.interface';
 
 export interface MangaScrapingConfig {
   headless?: boolean;
@@ -473,7 +475,7 @@ export class MangaPuppeteerService implements OnModuleDestroy {
   /**
    * Scrape chapter images from a specific chapter page
    */
-  async scrapeChapterImages(url: string, adapter: MangaScraperAdapter, config: MangaScrapingConfig = {}): Promise<{ images: string[]; scrapingTime: number; errors: string[] }> {
+  async scrapeChapterImages(url: string, adapter: MangaScraperAdapter, config: MangaScrapingConfig = {}): Promise<{ images: ChapterImageDto[]; scrapingTime: number; errors: string[] }> {
     const startTime = Date.now();
     const errors: string[] = [];
     let browser: Browser | null = null;
@@ -516,8 +518,8 @@ export class MangaPuppeteerService implements OnModuleDestroy {
         await page.waitForSelector(config.waitForSelector, { timeout: config.timeout || 10000 });
       }
 
-      // Extract chapter images using adapter's method
-      const images = (await (adapter as any).extractChapterImages?.(page, url)) || [];
+      // Extract chapter images using enhanced adapter wrapper
+      const images = await AdapterWrapper.getChapterImages(adapter, page, url);
       const scrapingTime = Date.now() - startTime;
 
       this.logger.log(`[${adapter.websiteKey}] Chapter images scraping completed: ${images.length} images in ${scrapingTime}ms`);

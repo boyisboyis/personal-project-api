@@ -1,0 +1,43 @@
+{
+  "id": "ch-1",
+  "title": "Chapter 1",
+  "url": "https://example.com/manga/test-manga/chapter-1",
+  "chapterNumber": 1,
+  "publishedAt": "2026-01-26T00:00:00.000Z",
+  "images": [
+    {
+      "url": "https://proxy.example.com/image/page-1.jpg",
+      "type": "image"
+    },
+    {
+      "url": "https://proxy.example.com/image/encrypted-page-2.jpg",
+      "type": "canvas",
+      "html": "<canvas id=\"encrypted-page-0-1737863775946\" class=\"encrypted-manga-page\" style=\"max-width: 100%; height: auto; border: 1px solid #ccc;\"></canvas>",
+      "script": "<script>\n                (function() {\n                  const canvas = document.getElementById('encrypted-page-0-1737863775946');\n                  if (!canvas) return;\n                  \n                  const ctx = canvas.getContext('2d');\n                  const img = new Image();\n                  img.crossOrigin = 'anonymous';\n                  \n                  img.onload = function() {\n                    canvas.width = img.width;\n                    canvas.height = img.height;\n                    \n                    // Draw the encrypted image\n                    ctx.drawImage(img, 0, 0);\n                    \n                    // Apply decryption (example: simple pixel manipulation)\n                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);\n                    const data = imageData.data;\n                    const key = parseInt('128') || 128;\n                    \n                    // Simple decryption example - XOR each color channel\n                    for (let i = 0; i < data.length; i += 4) {\n                      data[i] = data[i] ^ key;     // Red\n                      data[i + 1] = data[i + 1] ^ key; // Green\n                      data[i + 2] = data[i + 2] ^ key; // Blue\n                      // Alpha channel unchanged\n                    }\n                    \n                    // Put the decrypted image back\n                    ctx.putImageData(imageData, 0, 0);\n                    \n                    console.log('Decrypted image:', 'https://proxy.example.com/image/encrypted-page-2.jpg');\n                  };\n                  \n                  img.onerror = function() {\n                    console.error('Failed to load encrypted image:', 'https://proxy.example.com/image/encrypted-page-2.jpg');\n                    // Show error message in canvas\n                    ctx.fillStyle = '#ff0000';\n                    ctx.font = '16px Arial';\n                    ctx.fillText('Failed to load image', 10, 30);\n                  };\n                  \n                  img.src = 'https://proxy.example.com/image/encrypted-page-2.jpg';\n                })();\n              </script>"
+    },
+    {
+      "url": "https://proxy.example.com/image/scrambled-page-3.jpg",
+      "type": "canvas",
+      "html": "<canvas id=\"scrambled-page-0-1737863775946\" class=\"scrambled-manga-page\" style=\"max-width: 100%; height: auto;\"></canvas>",
+      "script": "<script>\n                (function() {\n                  const canvas = document.getElementById('scrambled-page-0-1737863775946');\n                  if (!canvas) return;\n                  \n                  const ctx = canvas.getContext('2d');\n                  const img = new Image();\n                  img.crossOrigin = 'anonymous';\n                  \n                  img.onload = function() {\n                    canvas.width = img.width;\n                    canvas.height = img.height;\n                    \n                    // Descramble the image based on pattern\n                    const pattern = 'vertical_split';\n                    \n                    if (pattern === 'vertical_split') {\n                      // Example: image is split vertically and needs reassembly\n                      const halfHeight = img.height / 2;\n                      ctx.drawImage(img, 0, halfHeight, img.width, halfHeight, 0, 0, img.width, halfHeight);\n                      ctx.drawImage(img, 0, 0, img.width, halfHeight, 0, halfHeight, img.width, halfHeight);\n                    } else if (pattern === 'tile_shuffle') {\n                      // Example: image is divided into tiles that need reordering\n                      // This is a simplified example - real implementation would be more complex\n                      const tileSize = 64;\n                      for (let y = 0; y < img.height; y += tileSize) {\n                        for (let x = 0; x < img.width; x += tileSize) {\n                          const newX = (x + tileSize) % img.width;\n                          const newY = (y + tileSize) % img.height;\n                          ctx.drawImage(img, x, y, tileSize, tileSize, newX, newY, tileSize, tileSize);\n                        }\n                      }\n                    } else {\n                      // Default: just draw normally\n                      ctx.drawImage(img, 0, 0);\n                    }\n                    \n                    console.log('Descrambled image with pattern:', pattern);\n                  };\n                  \n                  img.src = 'https://proxy.example.com/image/scrambled-page-3.jpg';\n                })();\n              </script>"
+    },
+    {
+      "url": "https://proxy.example.com/image/page-4.jpg",
+      "type": "image"
+    }
+  ],
+  "manga": {
+    "id": "test-manga",
+    "title": "Test Manga",
+    "author": "Test Author",
+    "coverImage": "https://proxy.example.com/image/cover.jpg",
+    "url": "https://example.com/manga/test-manga"
+  },
+  "previousChapter": null,
+  "nextChapter": {
+    "id": "ch-2",
+    "title": "Chapter 2",
+    "url": "https://example.com/manga/test-manga/chapter-2",
+    "chapterNumber": 2
+  }
+}

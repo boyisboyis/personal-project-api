@@ -1,4 +1,5 @@
 import { MangaItemDto } from '@/manga/dto/last-updated.dto';
+import { ChapterImageDto } from '@/manga/dto/chapter-image.dto';
 import { Page } from 'puppeteer';
 
 export interface MangaScraperAdapter {
@@ -68,7 +69,7 @@ export interface MangaScraperAdapter {
    * Extract chapter images from a chapter page
    * @param page Puppeteer page instance
    * @param chapterUrl URL of the chapter page
-   * @returns Promise resolving to array of image URLs
+   * @returns Promise resolving to array of image data with metadata or legacy string URLs
    */
-  extractChapterImages?(page: Page, chapterUrl: string): Promise<string[]>;
+  extractChapterImages?(page: Page, chapterUrl: string): Promise<ChapterImageDto[] | string[]>;
 }

@@ -5,11 +5,15 @@ import { Throttle } from '@nestjs/throttler';
 import { MangaService } from '@/manga/manga.service';
 import { WebsiteLastUpdatedDto, WebsiteLastUpdatedPaginatedDto, ChapterDetailsDto } from '@/manga/dto/last-updated.dto';
 import { MangaDetailsDto } from '@/manga/dto/manga-details.dto';
+import { CacheService } from '@/common/cache/cache.service';
 
 @ApiTags('Manga')
 @Controller('manga')
 export class MangaController {
-  constructor(private readonly mangaService: MangaService) {}
+  constructor(
+    private readonly mangaService: MangaService,
+    private readonly cacheService: CacheService,
+  ) {}
 
   @Get('webs')
   async getSupportedWebsites() {
@@ -59,7 +63,16 @@ export class MangaController {
   @Get(':web/last-updated')
   async getLastUpdatedByPath(@Param('web') webKey: string, @Query('page') page: string = '1'): Promise<WebsiteLastUpdatedPaginatedDto> {
     const pageNum = parseInt(page, 10) || 1;
-    return this.mangaService.getLastUpdatedWithPagination(webKey, pageNum);
+    
+    // Create cache key with web and page
+    const cacheKey = `manga-last-updated:${webKey}:page-${pageNum}`;
+    
+    // Try to get from cache first
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () => this.mangaService.getLastUpdatedWithPagination(webKey, pageNum),
+      5 * 60 * 1000 // 5 minutes TTL
+    );
   }
 
   @ApiOperation({
@@ -87,7 +100,15 @@ export class MangaController {
   @Throttle({ default: { limit: 15, ttl: 60000 } }) // 15 requests per minute
   @Get(':web/details/:mangaKey')
   async getMangaDetails(@Param('web') webKey: string, @Param('mangaKey') mangaKey: string): Promise<MangaDetailsDto | null> {
-    return this.mangaService.getMangaDetails(webKey, mangaKey);
+    // Create cache key with web and mangaKey
+    const cacheKey = `manga-details:${webKey}:${mangaKey}`;
+    
+    // Try to get from cache first
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () => this.mangaService.getMangaDetails(webKey, mangaKey),
+      5 * 60 * 1000 // 5 minutes TTL
+    );
   }
 
   @ApiOperation({
@@ -121,6 +142,14 @@ export class MangaController {
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute
   @Get(':web/:mangaKey/:chapterId')
   async getChapterDetails(@Param('web') webKey: string, @Param('mangaKey') mangaKey: string, @Param('chapterId') chapterId: string): Promise<ChapterDetailsDto | null> {
-    return this.mangaService.getChapterDetails(webKey, mangaKey, chapterId);
+    // Create cache key with web, mangaKey and chapterId
+    const cacheKey = `manga-chapter:${webKey}:${mangaKey}:${chapterId}`;
+    
+    // Try to get from cache first
+    return this.cacheService.getOrSet(
+      cacheKey,
+      () => this.mangaService.getChapterDetails(webKey, mangaKey, chapterId),
+      5 * 60 * 1000 // 5 minutes TTL
+    );
   }
 }

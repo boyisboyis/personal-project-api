@@ -60,6 +60,7 @@ export class ImageController {
         'mangaisekaithai.com',
         'manga-neko.com',
         'god-doujin.com',
+        'toonhunter.com',
       ].concat(
         Array(10)
           .fill(1)
@@ -221,10 +222,34 @@ export class ImageController {
       };
     }
 
+    // let config = {
+    //   method: 'get',
+    //   maxBodyLength: Infinity,
+    //   url: 'https://server1.webtoon168.com/server1/image/ymdmwjdsefpxeuqy.jpg',
+    //   headers: {
+    //     'sec-ch-ua-platform': '"Android"',
+    //     Referer: 'https://god-doujin.com/',
+    //     'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36',
+    //     'sec-ch-ua': '"Not(A:Brand";v="8", "Chromium";v="144", "Google Chrome";v="144"',
+    //     'sec-ch-ua-mobile': '?1',
+    //   },
+    // };
+
+    // const d = axios
+    //   .request(config)
+    //   .then(response => {
+    //     console.log(JSON.stringify(response.data));
+    //   })
+    //   .catch(error => {
+    //     console.log(error);
+    //   });
+    // console.log(d);
+
     return axios.get(imageUrl, {
       responseType: 'arraybuffer',
       timeout: 15000,
-      maxContentLength: 10 * 1024 * 1024,
+      // maxContentLength: 10 * 1024 * 1024,
+      maxBodyLength: Infinity,
       maxRedirects: 5,
       headers,
       validateStatus: function (status) {

@@ -5,9 +5,8 @@ import { ChapterImageDto } from '@/manga/dto/chapter-image.dto';
 import { SupportedWebsiteDto } from '@/manga/dto/supported-website.dto';
 import { MangaDetailsDto, toMangaDetailsDto } from '@/manga/dto/manga-details.dto';
 import { MetricsService } from '@/common/monitoring/metrics.service';
-import { proxyImageUrls, proxyImageUrl } from '@/common/image/image.utils';
-import { convertUrlsToChapterImages } from '@/manga/utils/image-converter.utils';
-import { AdapterWrapper } from '@/manga/adapters/enhanced-adapter.interface';
+import { proxyImageUrl } from '@/common/image/image.utils';
+import { CacheService } from '@/common/cache/cache.service';
 
 @Injectable()
 export class MangaAdapterService {
@@ -16,6 +15,7 @@ export class MangaAdapterService {
   constructor(
     private readonly adapterRegistry: AdapterRegistry,
     private readonly metricsService: MetricsService,
+    private readonly cacheService: CacheService
   ) {}
 
   /**
@@ -71,15 +71,14 @@ export class MangaAdapterService {
       };
 
       const overallDuration = Date.now() - overallStartTime;
-      
+
       this.logger.log(`Successfully fetched ${mangas.length} manga from ${adapter.websiteName} in ${overallDuration}ms`);
 
       return website;
-
     } catch (error) {
       this.metricsService.recordScrape(adapter.websiteKey, Date.now() - overallStartTime, false);
       this.logger.error(`Failed to fetch from ${adapter.websiteName}:`, error.message);
-      
+
       // Return empty result instead of throwing error
       return {
         websiteKey: adapter.websiteKey,
@@ -118,7 +117,7 @@ export class MangaAdapterService {
       } catch (error) {
         this.metricsService.recordScrape(adapter.websiteKey, Date.now() - overallStartTime, false);
         this.logger.error(`Failed to fetch from ${adapter.websiteName}:`, error.message);
-        
+
         // Return empty result for failed adapters
         return {
           websiteKey: adapter.websiteKey,
@@ -130,7 +129,7 @@ export class MangaAdapterService {
     });
 
     const websiteResults = await Promise.all(promises);
-    
+
     // Apply image proxy to all cover images
     const proxiedResults = websiteResults.map(website => ({
       ...website,
@@ -139,7 +138,7 @@ export class MangaAdapterService {
         coverImage: manga.coverImage ? proxyImageUrl(manga.coverImage) : undefined,
       })),
     }));
-    
+
     results.push(...proxiedResults);
 
     const overallDuration = Date.now() - overallStartTime;
@@ -161,9 +160,17 @@ export class MangaAdapterService {
     }
 
     const startTime = Date.now();
-    
+
     try {
-      const mangaDetails = await adapter.getMangaDetails(mangaKey);
+      const cacheKey = `manga-chapter:${websiteKey}:${mangaKey}`;
+
+      // Try to get from cache first
+      const mangaDetails = await this.cacheService.getOrSet(
+        cacheKey,
+        () => adapter.getMangaDetails(mangaKey),
+        5 * 60 * 1000 // 5 minutes TTL
+      );
+
       const duration = Date.now() - startTime;
 
       // Record metrics
@@ -179,13 +186,13 @@ export class MangaAdapterService {
       }
 
       this.logger.log(`Successfully fetched manga details for ${mangaKey} from ${adapter.websiteName} in ${duration}ms`);
-      
+
       // Apply image proxy to cover image and convert to MangaDetailsDto
       const proxiedMangaDetails = {
         ...mangaDetails,
         coverImage: mangaDetails.coverImage ? proxyImageUrl(mangaDetails.coverImage) : undefined,
       };
-      
+
       // Convert to MangaDetailsDto which has coverImage at root level
       return toMangaDetailsDto(proxiedMangaDetails);
     } catch (error) {
@@ -208,7 +215,7 @@ export class MangaAdapterService {
     }
 
     const startTime = Date.now();
-    
+
     try {
       // First get manga details to find the chapter
       const mangaDetails = await adapter.getMangaDetails(mangaKey);
@@ -221,21 +228,17 @@ export class MangaAdapterService {
 
       // Find the specific chapter by ID and its index
       const chapterIndex = mangaDetails.chapters.findIndex(ch => ch.id === chapterId);
-      
+
       if (chapterIndex === -1) {
         this.logger.warn(`Chapter ${chapterId} not found in manga ${mangaKey} from ${adapter.websiteName}`);
         return null;
       }
-      
+
       const chapter = mangaDetails.chapters[chapterIndex];
 
       // Find previous and next chapters
-      const previousChapter = chapterIndex < mangaDetails.chapters.length - 1 
-        ? mangaDetails.chapters[chapterIndex + 1] 
-        : null;
-      const nextChapter = chapterIndex > 0 
-        ? mangaDetails.chapters[chapterIndex - 1] 
-        : null;
+      const previousChapter = chapterIndex < mangaDetails.chapters.length - 1 ? mangaDetails.chapters[chapterIndex + 1] : null;
+      const nextChapter = chapterIndex > 0 ? mangaDetails.chapters[chapterIndex - 1] : null;
 
       this.logger.log(`Chapter navigation: Previous: ${previousChapter?.title || 'none'}, Current: ${chapter.title}, Next: ${nextChapter?.title || 'none'}`);
 
@@ -246,10 +249,10 @@ export class MangaAdapterService {
           const puppeteerService = (adapter as any).puppeteerService;
           if (puppeteerService) {
             const scrapingConfig = (adapter as any).getDefaultScrapingConfig?.() || {};
-            
+
             // Scrape images using enhanced service that returns ChapterImageDto[]
             const imageResult = await puppeteerService.scrapeChapterImages(chapter.url, adapter, scrapingConfig);
-            
+
             // The result should now always be ChapterImageDto[] due to AdapterWrapper
             if (imageResult.images && imageResult.images.length > 0) {
               images = (imageResult.images as ChapterImageDto[]).map(img => ({
@@ -273,7 +276,7 @@ export class MangaAdapterService {
       });
 
       this.logger.log(`Successfully fetched chapter details for ${chapterId} from ${adapter.websiteName} in ${duration}ms`);
-      
+
       // Return chapter with additional manga context, proxied images, and navigation
       return {
         ...chapter,
@@ -285,18 +288,22 @@ export class MangaAdapterService {
           coverImage: proxyImageUrl(mangaDetails.coverImage || ''), // Proxy cover image too
           url: mangaDetails.url,
         },
-        previousChapter: previousChapter ? {
-          id: previousChapter.id,
-          title: previousChapter.title,
-          url: previousChapter.url,
-          chapterNumber: previousChapter.chapterNumber,
-        } : undefined,
-        nextChapter: nextChapter ? {
-          id: nextChapter.id,
-          title: nextChapter.title,
-          url: nextChapter.url,
-          chapterNumber: nextChapter.chapterNumber,
-        } : undefined,
+        previousChapter: previousChapter
+          ? {
+              id: previousChapter.id,
+              title: previousChapter.title,
+              url: previousChapter.url,
+              chapterNumber: previousChapter.chapterNumber,
+            }
+          : undefined,
+        nextChapter: nextChapter
+          ? {
+              id: nextChapter.id,
+              title: nextChapter.title,
+              url: nextChapter.url,
+              chapterNumber: nextChapter.chapterNumber,
+            }
+          : undefined,
       };
     } catch (error) {
       const duration = Date.now() - startTime;

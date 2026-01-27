@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 
 export interface CacheEntry<T> {
   data: T;
@@ -14,12 +14,27 @@ export interface CacheStats {
 }
 
 @Injectable()
-export class CacheService {
+export class CacheService implements OnModuleDestroy {
   private readonly logger = new Logger(CacheService.name);
   private cache = new Map<string, CacheEntry<any>>();
   private stats = { hits: 0, misses: 0 };
   private readonly defaultTtl = 5 * 60 * 1000; // 5 minutes
   private readonly maxEntries = 1000;
+  private cleanupTimer?: NodeJS.Timeout;
+  private readonly cleanupInterval = 2 * 60 * 1000; // 2 minutes
+  private expiredCounter = 0;
+  private readonly expiredThreshold = 10; // Cleanup when 10 expired entries found
+
+  constructor() {
+    this.startPeriodicCleanup();
+  }
+
+  /**
+   * NestJS lifecycle hook - cleanup on module destroy
+   */
+  onModuleDestroy(): void {
+    this.stopPeriodicCleanup();
+  }
   
   /**
    * Set cache entry with TTL
@@ -58,7 +73,16 @@ export class CacheService {
     if (age > entry.ttl) {
       this.cache.delete(key);
       this.stats.misses++;
+      this.expiredCounter++;
       this.logger.debug(`Cache EXPIRED: ${key} (age: ${age}ms)`);
+      
+      // Trigger cleanup if too many expired entries found
+      if (this.expiredCounter >= this.expiredThreshold) {
+        this.logger.debug(`Triggering cleanup due to ${this.expiredCounter} expired entries`);
+        this.cleanup();
+        this.expiredCounter = 0;
+      }
+      
       return null;
     }
 
@@ -92,6 +116,7 @@ export class CacheService {
     const size = this.cache.size;
     this.cache.clear();
     this.stats = { hits: 0, misses: 0 };
+    this.expiredCounter = 0;
     this.logger.log(`Cache cleared. Removed ${size} entries`);
   }
 
@@ -194,5 +219,56 @@ export class CacheService {
    */
   static createSearchKey(websiteKey: string, query: string, limit?: number): string {
     return `search:${websiteKey}:${encodeURIComponent(query)}:${limit || 'default'}`;
+  }
+
+  /**
+   * Start periodic cleanup timer
+   */
+  private startPeriodicCleanup(): void {
+    this.cleanupTimer = setInterval(() => {
+      this.logger.debug('Running periodic cache cleanup');
+      this.cleanup();
+    }, this.cleanupInterval);
+    
+    this.logger.log(`Periodic cache cleanup started (interval: ${this.cleanupInterval / 1000}s)`);
+  }
+
+  /**
+   * Stop periodic cleanup (for graceful shutdown)
+   */
+  stopPeriodicCleanup(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = undefined;
+      this.logger.log('Periodic cache cleanup stopped');
+    }
+  }
+
+  /**
+   * Force immediate cleanup
+   */
+  forceCleanup(): number {
+    const beforeSize = this.cache.size;
+    this.cleanup();
+    const afterSize = this.cache.size;
+    const removed = beforeSize - afterSize;
+    
+    this.logger.log(`Force cleanup completed. Removed ${removed} expired entries`);
+    return removed;
+  }
+
+  /**
+   * Get cleanup configuration
+   */
+  getCleanupConfig(): {
+    cleanupInterval: number;
+    expiredThreshold: number;
+    isPeriodicCleanupActive: boolean;
+  } {
+    return {
+      cleanupInterval: this.cleanupInterval,
+      expiredThreshold: this.expiredThreshold,
+      isPeriodicCleanupActive: !!this.cleanupTimer,
+    };
   }
 }

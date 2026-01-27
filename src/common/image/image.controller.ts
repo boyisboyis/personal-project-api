@@ -91,7 +91,7 @@ export class ImageController {
       this.logger.debug(`Proxying image: ${imageUrl}`);
 
       // Create cache key for the image
-      const cacheKey = `image-proxy:${Buffer.from(imageUrl).toString('base64').slice(0, 50)}`;
+      const cacheKey = `image-proxy:${imageUrl}`;
       // Try to get from cache first
       const cachedImage = this.cacheService.get<{ data: Buffer; contentType: string; headers: any }>(cacheKey);
       

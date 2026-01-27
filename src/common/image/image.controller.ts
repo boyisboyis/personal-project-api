@@ -3,11 +3,14 @@ import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import axios from 'axios';
+import { CacheService } from '@/common/cache/cache.service';
 
 @ApiTags('Image Proxy')
 @Controller('image')
 export class ImageController {
   private readonly logger = new Logger(ImageController.name);
+
+  constructor(private readonly cacheService: CacheService) {}
 
   @ApiOperation({
     summary: 'Proxy image to bypass CORS restrictions',
@@ -87,6 +90,28 @@ export class ImageController {
     try {
       this.logger.debug(`Proxying image: ${imageUrl}`);
 
+      // Create cache key for the image
+      const cacheKey = `image-proxy:${Buffer.from(imageUrl).toString('base64').slice(0, 50)}`;
+      // Try to get from cache first
+      const cachedImage = this.cacheService.get<{ data: Buffer; contentType: string; headers: any }>(cacheKey);
+      
+      if (cachedImage) {
+        this.logger.debug(`Using cached image: ${imageUrl}`);
+        
+        // Set response headers from cache
+        res.set({
+          'Content-Type': cachedImage.contentType,
+          'Cache-Control': 'public, max-age=3600',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET',
+          'X-Proxied-From': new URL(imageUrl).hostname,
+          'X-Cache-Status': 'HIT',
+        });
+        
+        res.send(cachedImage.data);
+        return;
+      }
+
       let response;
       try {
         // First attempt with full browser headers
@@ -138,6 +163,16 @@ export class ImageController {
         contentType = (extension && mimeTypes[extension]) || 'image/jpeg';
       }
 
+      // Cache the image data for 5 minutes
+      const imageBuffer = Buffer.from(response.data);
+      const cacheData = {
+        data: imageBuffer,
+        contentType,
+        headers: response.headers,
+      };
+      
+      this.cacheService.set(cacheKey, cacheData, 5 * 60 * 1000); // 5 minutes TTL
+
       // Set response headers
       res.set({
         'Content-Type': contentType,
@@ -145,10 +180,11 @@ export class ImageController {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET',
         'X-Proxied-From': new URL(imageUrl).hostname,
+        'X-Cache-Status': 'MISS',
       });
 
       // Send image buffer
-      res.send(Buffer.from(response.data));
+      res.send(imageBuffer);
 
       this.logger.debug(`Successfully proxied image: ${imageUrl} (${contentType})`);
     } catch (error) {

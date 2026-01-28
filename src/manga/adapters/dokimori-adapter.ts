@@ -337,6 +337,7 @@ export class DokimoriAdapter extends BaseMangaAdapter {
             const chapterEl = container.querySelector(selectors.chapter);
             const imageEl = container.querySelector(selectors.image);
             const authorEl = container.querySelector(selectors.author);
+            const lastUpdatedEl = container.querySelector('span.post-on.font-meta'); /// post-on font-meta
 
             const title = titleEl?.textContent?.trim();
             const url = linkEl?.getAttribute('href');
@@ -350,8 +351,8 @@ export class DokimoriAdapter extends BaseMangaAdapter {
                 title,
                 author: authorEl?.textContent?.trim(),
                 coverImage: imageEl?.getAttribute('data-src'),
-                latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
-                lastUpdated: undefined, // Dokimori doesn't provide lastUpdated in this format
+                latestChapter: chapterEl ? parseFloat(chapterEl.textContent?.replace(/[^\d.]/g, '') || '0') || undefined : undefined,
+                lastUpdated: lastUpdatedEl?.textContent?.trim() || undefined, // Dokimori doesn't provide lastUpdated in this format
                 url: fullUrl,
               });
             }

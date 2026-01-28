@@ -37,7 +37,7 @@ export class ToonHunterAdapter extends BaseMangaAdapter implements MangaScraperA
       this.logger.error(`Failed to fetch latest updated manga from ${this.websiteName}:`, error.message);
 
       // Return mock data as fallback
-      return this.generateMockLatestUpdated(limit);
+      return [];
     }
   }
 
@@ -54,7 +54,7 @@ export class ToonHunterAdapter extends BaseMangaAdapter implements MangaScraperA
       return scrapedData;
     } catch (error) {
       this.logger.error(`[${this.websiteKey}] Error searching manga:`, error.message);
-      return this.generateMockSearchResults(query, limit);
+      return [];
     }
   }
 
@@ -73,10 +73,10 @@ export class ToonHunterAdapter extends BaseMangaAdapter implements MangaScraperA
       }
 
       this.logger.warn(`[${this.websiteKey}] No manga found at: ${mangaUrl}`);
-      return this.generateMockMangaDetails(identifier);
+      return null;
     } catch (error) {
       this.logger.error(`[${this.websiteKey}] Error getting manga details:`, error.message);
-      return this.generateMockMangaDetails(identifier);
+      return null;
     }
   }
 
@@ -186,8 +186,8 @@ export class ToonHunterAdapter extends BaseMangaAdapter implements MangaScraperA
                 if (chapterElement) {
                   const chapterText = chapterElement.textContent || '';
                   const chapterMatch = chapterText.match(/\d+\.?\d*/);
-                  if (chapterMatch) {
-                    latestChapter = parseInt(chapterMatch[1], 10);
+                  if (chapterMatch && chapterMatch.length > 0) {
+                    latestChapter = parseFloat(chapterMatch[chapterMatch.length - 1]);
                     break;
                   }
                 }
@@ -442,44 +442,5 @@ export class ToonHunterAdapter extends BaseMangaAdapter implements MangaScraperA
         return [];
       }
     }, chapterUrl);
-  }
-
-  private generateMockLatestUpdated(limit: number): MangaItemDto[] {
-    return Array.from({ length: limit }, (_, i) => ({
-      id: `toonhunter-${i + 1}`,
-      title: `Toon Hunter Title ${i + 1}`,
-      author: 'Toon Hunter Author',
-      coverImage: `https://via.placeholder.com/200x300?text=ToonHunter+${i + 1}`,
-      latestChapter: i + 25,
-      lastUpdated: new Date().toISOString(),
-      url: `${this.websiteUrl}/webtoon/toonhunter-${i + 1}`,
-      chapters: [],
-    }));
-  }
-
-  private generateMockSearchResults(query: string, limit: number): MangaItemDto[] {
-    return this.generateMockLatestUpdated(limit).map(manga => ({
-      ...manga,
-      title: `${query} - ${manga.title}`,
-    }));
-  }
-
-  private generateMockMangaDetails(mangaKey: string): MangaItemDto {
-    return {
-      id: mangaKey,
-      title: 'Toon Hunter Demo Title',
-      author: 'Toon Hunter Demo Author',
-      coverImage: 'https://via.placeholder.com/200x300?text=ToonHunter+Demo',
-      latestChapter: 35,
-      lastUpdated: new Date().toISOString(),
-      url: `${this.websiteUrl}/webtoon/${mangaKey}`,
-      chapters: Array.from({ length: 35 }, (_, i) => ({
-        id: `ep-${i + 1}`,
-        title: `Episode ${i + 1}`,
-        url: `${this.websiteUrl}/webtoon/${mangaKey}/episode-${i + 1}`,
-        chapterNumber: i + 1,
-        publishedAt: new Date(Date.now() - (35 - i) * 86400000),
-      })),
-    };
   }
 }

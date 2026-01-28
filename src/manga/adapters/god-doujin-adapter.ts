@@ -37,7 +37,7 @@ export class GodDoujinAdapter extends BaseMangaAdapter implements MangaScraperAd
       this.logger.error(`Failed to fetch latest updated manga from ${this.websiteName}:`, error.message);
 
       // Return mock data as fallback
-      return this.generateMockLatestUpdated(limit);
+      return [];
     }
   }
 
@@ -54,7 +54,7 @@ export class GodDoujinAdapter extends BaseMangaAdapter implements MangaScraperAd
       return scrapedData;
     } catch (error) {
       this.logger.error(`[${this.websiteKey}] Error searching manga:`, error.message);
-      return this.generateMockSearchResults(query, limit);
+      return [];
     }
   }
 
@@ -73,10 +73,10 @@ export class GodDoujinAdapter extends BaseMangaAdapter implements MangaScraperAd
       }
 
       this.logger.warn(`[${this.websiteKey}] No manga found at: ${mangaUrl}`);
-      return this.generateMockMangaDetails(identifier);
+      return null;
     } catch (error) {
       this.logger.error(`[${this.websiteKey}] Error getting manga details:`, error.message);
-      return this.generateMockMangaDetails(identifier);
+      return null;
     }
   }
 
@@ -186,8 +186,8 @@ export class GodDoujinAdapter extends BaseMangaAdapter implements MangaScraperAd
                 if (chapterElement) {
                   const chapterText = chapterElement.textContent || '';
                   const chapterMatch = chapterText.match(/\d+\.?\d*/);
-                  if (chapterMatch) {
-                    latestChapter = parseInt(chapterMatch[1], 10);
+                  if (chapterMatch && chapterMatch.length > 0) {
+                    latestChapter = parseFloat(chapterMatch[chapterMatch.length - 1]);
                     break;
                   }
                 }
@@ -439,44 +439,5 @@ export class GodDoujinAdapter extends BaseMangaAdapter implements MangaScraperAd
         return [];
       }
     }, chapterUrl);
-  }
-
-  private generateMockLatestUpdated(limit: number): MangaItemDto[] {
-    return Array.from({ length: limit }, (_, i) => ({
-      id: `god-doujin-${i + 1}`,
-      title: `God Doujin Title ${i + 1}`,
-      author: 'God Doujin Artist',
-      coverImage: `https://via.placeholder.com/200x300?text=GodDoujin+${i + 1}`,
-      latestChapter: i + 20,
-      lastUpdated: new Date().toISOString(),
-      url: `${this.websiteUrl}/manga/god-doujin-${i + 1}`,
-      chapters: [],
-    }));
-  }
-
-  private generateMockSearchResults(query: string, limit: number): MangaItemDto[] {
-    return this.generateMockLatestUpdated(limit).map(manga => ({
-      ...manga,
-      title: `${query} - ${manga.title}`,
-    }));
-  }
-
-  private generateMockMangaDetails(mangaKey: string): MangaItemDto {
-    return {
-      id: mangaKey,
-      title: 'God Doujin Demo Title',
-      author: 'God Doujin Demo Artist',
-      coverImage: 'https://via.placeholder.com/200x300?text=GodDoujin+Demo',
-      latestChapter: 25,
-      lastUpdated: new Date().toISOString(),
-      url: `${this.websiteUrl}/manga/${mangaKey}`,
-      chapters: Array.from({ length: 25 }, (_, i) => ({
-        id: `ch-${i + 1}`,
-        title: `Chapter ${i + 1}`,
-        url: `${this.websiteUrl}/manga/${mangaKey}/chapter-${i + 1}`,
-        chapterNumber: i + 1,
-        publishedAt: new Date(Date.now() - (25 - i) * 86400000),
-      })),
-    };
   }
 }

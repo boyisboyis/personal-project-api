@@ -207,11 +207,13 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
 
             const title = titleEl?.textContent?.trim();
             const url = linkEl?.getAttribute('href');
+            let lastUpdated: string | undefined = undefined;
 
             // Special handling for Niceoppai chapter format
             if (chapterEl) {
               const spanEl = chapterEl.querySelector('span');
               if (spanEl) {
+                lastUpdated = spanEl.textContent?.trim() || undefined;
                 spanEl.remove();
               }
             }
@@ -225,8 +227,8 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
                 title,
                 author: authorEl?.textContent?.trim(),
                 coverImage: imageEl?.getAttribute('src'),
-                latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
-                lastUpdated: undefined, // Niceoppai doesn't provide lastUpdated in this format
+                latestChapter: chapterEl ? parseFloat(chapterEl.textContent?.replace(/[^\d.]/g, '') || '0') || undefined : undefined,
+                lastUpdated: lastUpdated, // Niceoppai doesn't provide lastUpdated in this format
                 url: fullUrl,
               });
             }

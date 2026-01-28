@@ -31,7 +31,7 @@ export class GodmangaAdapter extends BaseMangaAdapter {
       this.logger.error(`Failed to fetch latest updated manga from ${this.websiteName}:`, error.message);
 
       // Return mock data as fallback
-      return this.generateMockLatestUpdated(limit);
+      return [];
     }
   }
 
@@ -40,7 +40,7 @@ export class GodmangaAdapter extends BaseMangaAdapter {
       this.logOperation(`Searching for "${query}" (limit: ${limit})`);
 
       // Return mock search results as fallback
-      return this.generateMockSearchResults(query, limit);
+      return [];
     } catch (error) {
       this.logger.error(`Failed to search manga from ${this.websiteName}:`, error.message);
       return [];
@@ -67,7 +67,7 @@ export class GodmangaAdapter extends BaseMangaAdapter {
 
       for (const mangaUrl of urlPatterns) {
         this.logger.log(`[${this.websiteKey}] Trying URL pattern: ${mangaUrl}`);
-        
+
         try {
           const scrapingConfig = {
             ...this.getDefaultScrapingConfig(),
@@ -75,7 +75,7 @@ export class GodmangaAdapter extends BaseMangaAdapter {
             waitForSelector: 'body', // More generic selector
             timeout: isRailway ? 90000 : 30000,
           };
-          
+
           const result = await this.puppeteerService.scrapeMangaDetails(mangaUrl, this, scrapingConfig);
 
           if (result.errors.length > 0) {
@@ -99,7 +99,7 @@ export class GodmangaAdapter extends BaseMangaAdapter {
 
       // Fallback to mock details as last resort
       this.logger.log(`[${this.websiteKey}] Falling back to mock data for: ${identifier}`);
-      return this.generateMockMangaDetails(identifier);
+      return null;
     }
   }
 
@@ -127,18 +127,10 @@ export class GodmangaAdapter extends BaseMangaAdapter {
         // Log current URL for debugging
         console.log('Current URL:', window.location.href);
         console.log('Page title:', document.title);
-        
+
         // Try multiple selectors for title - GodManga might have different layouts
-        const titleSelectors = [
-          '#con3 div.series-synops strong',
-          '.series-title',
-          '.manga-title',
-          'h1.entry-title',
-          '.post-title h1',
-          '.series-info .title',
-          'h1'
-        ];
-        
+        const titleSelectors = ['#con3 div.series-synops strong', '.series-title', '.manga-title', 'h1.entry-title', '.post-title h1', '.series-info .title', 'h1'];
+
         let title = '';
         let titleEl = null;
         for (const selector of titleSelectors) {
@@ -151,28 +143,22 @@ export class GodmangaAdapter extends BaseMangaAdapter {
             }
           }
         }
-        
+
         if (!title) {
           console.error('No title found with any selector');
           // Try to get page title as fallback
           title = document.title?.replace(/.*?-\\s*/, '')?.trim() || '';
           console.log('Fallback title from document.title:', title);
         }
-        
+
         if (!title) {
           console.error('Still no title found, returning null');
           return null;
         }
 
         // Try multiple selectors for author
-        const authorSelectors = [
-          '#con3 div.series-info > ul > li:nth-child(3) > span',
-          '.series-author',
-          '.manga-author',
-          '.author',
-          '.series-info .author'
-        ];
-        
+        const authorSelectors = ['#con3 div.series-info > ul > li:nth-child(3) > span', '.series-author', '.manga-author', '.author', '.series-info .author'];
+
         let author = '';
         for (const selector of authorSelectors) {
           const authorEl = document.querySelector(selector);
@@ -186,15 +172,8 @@ export class GodmangaAdapter extends BaseMangaAdapter {
         }
 
         // Try multiple selectors for cover image
-        const coverSelectors = [
-          'div.series-thumb img',
-          '.series-image img',
-          '.manga-image img',
-          '.post-thumb img',
-          '.series-cover img',
-          'img.series-thumb'
-        ];
-        
+        const coverSelectors = ['div.series-thumb img', '.series-image img', '.manga-image img', '.post-thumb img', '.series-cover img', 'img.series-thumb'];
+
         let coverImage = '';
         for (const selector of coverSelectors) {
           const coverEl = document.querySelector(selector) as HTMLImageElement;
@@ -219,9 +198,9 @@ export class GodmangaAdapter extends BaseMangaAdapter {
           '.episode-list li',
           '.chapter-item',
           'ul.chapters li',
-          '.wp-manga-chapter'
+          '.wp-manga-chapter',
         ];
-        
+
         let chapterElements = null;
         for (const selector of chapterSelectors) {
           chapterElements = document.querySelectorAll(selector);
@@ -230,7 +209,7 @@ export class GodmangaAdapter extends BaseMangaAdapter {
             break;
           }
         }
-        
+
         if (!chapterElements || chapterElements.length === 0) {
           console.warn('No chapters found with any selector');
         }
@@ -292,7 +271,7 @@ export class GodmangaAdapter extends BaseMangaAdapter {
     return await page.evaluate(() => {
       try {
         const images: string[] = [];
-        
+
         // GodManga specific selectors
         const imageSelectors = [
           '.reading-content img',
@@ -302,7 +281,7 @@ export class GodmangaAdapter extends BaseMangaAdapter {
           '.entry-content img',
           'img[data-src]',
           'img.wp-manga-chapter-img',
-          '.comic-page img'
+          '.comic-page img',
         ];
 
         imageSelectors.forEach(selector => {
@@ -324,46 +303,6 @@ export class GodmangaAdapter extends BaseMangaAdapter {
         return [];
       }
     });
-  }
-
-  private generateMockLatestUpdated(limit: number): MangaItemDto[] {
-    const mockTitles = ['One Piece', 'Naruto', 'Dragon Ball Super', 'Attack on Titan', 'My Hero Academia', 'Demon Slayer', 'Jujutsu Kaisen', 'Tokyo Ghoul', 'Death Note', 'Bleach'];
-
-    return Array.from({ length: Math.min(limit, mockTitles.length) }, (_, index) => ({
-      id: `${this.websiteKey}-${index + 1}`,
-      title: mockTitles[index],
-      author: mockTitles[index], // Using title as author for simplicity
-      coverImage: `${this.websiteUrl}/cover/${mockTitles[index].toLowerCase().replace(/\s+/g, '-')}.jpg`,
-      latestChapter: Math.floor(Math.random() * 1000) + (Date.now() % 1000000), // Random chapter number
-      lastUpdated: new Date().toISOString(),
-      url: `${this.websiteUrl}/${mockTitles[index].toLowerCase().replace(/\s+/g, '-')}/`,
-    }));
-  }
-
-  private generateMockSearchResults(query: string, limit: number): MangaItemDto[] {
-    const mockResults = [`${query} - The Beginning`, `${query} Chronicles`, `Adventures of ${query}`, `${query} vs The World`, `Legend of ${query}`];
-
-    return Array.from({ length: Math.min(limit, mockResults.length) }, (_, index) => ({
-      id: `${this.websiteKey}-search-${index + 1}`,
-      title: mockResults[index],
-      author: `Author of ${mockResults[index]}`,
-      coverImage: `${this.websiteUrl}/cover/search-${index + 1}.jpg`,
-      latestChapter: Math.floor(Math.random() * 100) + 1,
-      lastUpdated: new Date().toISOString(),
-      url: `${this.websiteUrl}/search-result-${index + 1}/`,
-    }));
-  }
-
-  private generateMockMangaDetails(identifier: string): MangaItemDto {
-    return {
-      id: `${this.websiteKey}-detail-${identifier}`,
-      title: `Manga Details for ${identifier}`,
-      author: `Author of ${identifier}`,
-      coverImage: `${this.websiteUrl}/cover/${identifier}.jpg`,
-      latestChapter: Math.floor(Math.random() * 500) + 1,
-      lastUpdated: new Date().toISOString(),
-      url: `${this.websiteUrl}/${identifier}/`,
-    };
   }
 
   /**
@@ -441,7 +380,6 @@ export class GodmangaAdapter extends BaseMangaAdapter {
 
         containers.forEach((container, index) => {
           if (results.length >= limit) return;
-
           try {
             const titleEl = container.querySelector(selectors.title);
             const linkEl = container.querySelector(selectors.link);
@@ -456,13 +394,14 @@ export class GodmangaAdapter extends BaseMangaAdapter {
             if (title) {
               const fullUrl = url ? (url.startsWith('http') ? url : `${window.location.origin}${url}`) : undefined;
               const mangaId = fullUrl ? extractSlugFromUrl(fullUrl) : `${websiteKey}-${index + 1}`;
+               const chapterMatch = chapterEl?.textContent?.match(/\d+\.?\d*/) || [];
 
               results.push({
                 id: mangaId,
                 title,
                 author: authorEl?.textContent?.trim(),
                 coverImage: imageEl?.getAttribute('src'),
-                latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
+                latestChapter: chapterMatch.length > 0 ? parseFloat(chapterMatch[chapterMatch.length - 1]) : undefined,
                 lastUpdated: lastUpdatedEl?.textContent?.trim() || undefined,
                 url: fullUrl,
               });

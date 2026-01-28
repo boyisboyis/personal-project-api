@@ -394,14 +394,15 @@ export class NtrmangaAdapter extends BaseMangaAdapter {
     return await page.evaluate(
       (limit, websiteKey) => {
         const results: any[] = [];
+        // #content > div > div.postbody > div:nth-child(4) > div.listupd > div:nth-child(2)
         const selectors = {
-          container: '#content .listupd .bs',
+          container: '#content > div > div.postbody > div:nth-child(4) > div.listupd > div.bs',
           title: '.bigor .tt',
           link: '.bsx > a',
           chapter: '.adds .epxs',
           image: '.ts-post-image',
           author: '.bigor .tt',
-          lastUpdated: '.epxdate',
+          lastUpdated: 'div.bigor > div.epxdate', // #content > div > div.postbody > div:nth-child(4) > div.listupd > div:nth-child(2) > div > a > div.bigor > div.epxdate
         };
 
         // Helper function to extract slug from URL
@@ -473,7 +474,7 @@ export class NtrmangaAdapter extends BaseMangaAdapter {
                 title,
                 author: authorEl?.textContent?.trim(),
                 coverImage: imageEl?.getAttribute('src') || imageEl?.getAttribute('data-src'),
-                latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
+                latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/[^\d.]/g, '') || '0') || undefined : undefined,
                 lastUpdated: lastUpdatedEl?.textContent?.trim() || undefined,
                 url: fullUrl,
               });

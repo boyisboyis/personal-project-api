@@ -373,7 +373,7 @@ export class TanukiAdapter extends BaseMangaAdapter {
                 title,
                 author: authorEl?.textContent?.trim(),
                 coverImage: imageEl?.getAttribute('src') || imageEl?.getAttribute('data-src'),
-                latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
+                latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/[^\d.]/g, '') || '0') || undefined : undefined,
                 lastUpdated: lastUpdatedEl?.textContent?.trim() || undefined,
                 url: fullUrl,
               });

@@ -168,7 +168,7 @@ export class MangaAdapterService {
       const mangaDetails = await this.cacheService.getOrSet(
         cacheKey,
         () => adapter.getMangaDetails(mangaKey),
-        5 * 60 * 1000 // 5 minutes TTL
+        10 * 60 * 1000 // 5 minutes TTL
       );
 
       const duration = Date.now() - startTime;
@@ -218,7 +218,14 @@ export class MangaAdapterService {
 
     try {
       // First get manga details to find the chapter
-      const mangaDetails = await adapter.getMangaDetails(mangaKey);
+      const cacheKey = `manga-chapter:${websiteKey}:${mangaKey}`;
+
+      // Try to get from cache first
+      const mangaDetails = await this.cacheService.getOrSet(
+        cacheKey,
+        () => adapter.getMangaDetails(mangaKey),
+        10 * 60 * 1000 // 5 minutes TTL
+      );
       const duration = Date.now() - startTime;
 
       if (!mangaDetails || !mangaDetails.chapters) {
@@ -281,6 +288,7 @@ export class MangaAdapterService {
       return {
         ...chapter,
         images,
+        chapters: mangaDetails.chapters,
         manga: {
           id: mangaDetails.id,
           title: mangaDetails.title,

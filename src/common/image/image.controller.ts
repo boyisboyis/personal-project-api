@@ -64,13 +64,14 @@ export class ImageController {
         'manga-neko.com',
         'god-doujin.com',
         'toonhunter.com',
+        'img.rom-manga.com',
       ].concat(
         Array(10)
           .fill(1)
           .map((_, i) => `server${i + 1}.webtoon168.com`)
       );
 
-      const isAllowedDomain = allowedDomains.some(domain => url.hostname === domain || url.hostname.endsWith('.' + domain));
+      const isAllowedDomain = allowedDomains.some(domain => url.hostname === domain || url.hostname.endsWith('.' + domain) || url.hostname.includes('manga'));
 
       if (!isAllowedDomain) {
         throw new BadRequestException('Domain not allowed for image proxying');
@@ -94,10 +95,10 @@ export class ImageController {
       const cacheKey = `image-proxy:${imageUrl}`;
       // Try to get from cache first
       const cachedImage = this.cacheService.get<{ data: Buffer; contentType: string; headers: any }>(cacheKey);
-      
+
       if (cachedImage) {
         this.logger.debug(`Using cached image: ${imageUrl}`);
-        
+
         // Set response headers from cache
         res.set({
           'Content-Type': cachedImage.contentType,
@@ -107,7 +108,7 @@ export class ImageController {
           'X-Proxied-From': new URL(imageUrl).hostname,
           'X-Cache-Status': 'HIT',
         });
-        
+
         res.send(cachedImage.data);
         return;
       }
@@ -170,7 +171,7 @@ export class ImageController {
         contentType,
         headers: response.headers,
       };
-      
+
       this.cacheService.set(cacheKey, cacheData, 5 * 60 * 1000); // 5 minutes TTL
 
       // Set response headers

@@ -185,7 +185,7 @@ export class MangaNekoAdapter extends BaseMangaAdapter implements MangaScraperAd
                 const chapterElement = element.querySelector(selector);
                 if (chapterElement) {
                   const chapterText = chapterElement.textContent || '';
-                  const chapterMatch = chapterText.match(/(\d+)/);
+                  const chapterMatch = chapterText.match(/\d+\.?\d*/);
                   if (chapterMatch) {
                     latestChapter = parseInt(chapterMatch[0], 10);
                     break;

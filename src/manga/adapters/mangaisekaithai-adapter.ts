@@ -236,7 +236,7 @@ export class MangaisekkaithaiAdapter extends BaseMangaAdapter implements MangaSc
           if (chapterEl) {
             const chapterText = chapterEl.textContent?.trim() || '';
             console.log(`Found chapter element with selector '${selector}':`, chapterText);
-            const chapterMatch = chapterText.match(/(\d+)/);
+            const chapterMatch = chapterText.match(/\d+\.?\d*/);
             if (chapterMatch) {
               latestChapter = parseInt(chapterMatch[1]);
               console.log(`Extracted latest chapter:`, latestChapter);
@@ -316,10 +316,7 @@ export class MangaisekkaithaiAdapter extends BaseMangaAdapter implements MangaSc
             const src = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
             if (src && !images.some(image => image.url === src)) {
               // Check if this is a canvas-based image (encrypted/protected content)
-              const isCanvasType = img.classList.contains('encrypted') || 
-                                   img.hasAttribute('data-encrypted') ||
-                                   src.includes('encrypted') ||
-                                   src.includes('protected');
+              const isCanvasType = img.classList.contains('encrypted') || img.hasAttribute('data-encrypted') || src.includes('encrypted') || src.includes('protected');
 
               const image: ChapterImageDto = {
                 url: src,
@@ -506,13 +503,12 @@ export class MangaisekkaithaiAdapter extends BaseMangaAdapter implements MangaSc
             if (title) {
               const fullUrl = url ? (url.startsWith('http') ? url : `${window.location.origin}${url}`) : undefined;
               const mangaId = fullUrl ? extractSlugFromUrl(fullUrl) : `${websiteKey}-${index + 1}`;
-
               results.push({
                 id: mangaId,
                 title,
                 author: authorEl?.textContent?.trim(),
                 coverImage: imageEl?.getAttribute('src') || imageEl?.getAttribute('data-src'),
-                latestChapter: chapterEl ? parseInt(chapterEl.textContent?.replace(/\D/g, '') || '0') || undefined : undefined,
+                latestChapter: chapterEl ? parseFloat(chapterEl.textContent?.replace(/[^\d.]/g, '') || '0') || undefined : undefined,
                 lastUpdated: lastUpdatedEl?.textContent?.trim() || undefined,
                 url: fullUrl,
               });

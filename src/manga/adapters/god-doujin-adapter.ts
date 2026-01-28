@@ -185,7 +185,7 @@ export class GodDoujinAdapter extends BaseMangaAdapter implements MangaScraperAd
                 const chapterElement = element.querySelector(selector);
                 if (chapterElement) {
                   const chapterText = chapterElement.textContent || '';
-                  const chapterMatch = chapterText.match(/(\d+)/);
+                  const chapterMatch = chapterText.match(/\d+\.?\d*/);
                   if (chapterMatch) {
                     latestChapter = parseInt(chapterMatch[1], 10);
                     break;

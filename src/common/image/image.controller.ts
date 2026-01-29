@@ -71,7 +71,9 @@ export class ImageController {
           .map((_, i) => `server${i + 1}.webtoon168.com`)
       );
 
-      const isAllowedDomain = allowedDomains.some(domain => url.hostname === domain || url.hostname.endsWith('.' + domain) || url.hostname.includes('manga'));
+      const isAllowedDomain = allowedDomains.some(
+        domain => url.hostname === domain || url.hostname.endsWith('.' + domain) || url.hostname.includes('manga') || url.hostname.includes('webtoon')
+      );
 
       if (!isAllowedDomain) {
         throw new BadRequestException('Domain not allowed for image proxying');
@@ -240,7 +242,7 @@ export class ImageController {
     const godDomain = Array(10)
       .fill(1)
       .map((_, i) => `server${i + 1}.webtoon168.com`);
-    const isGodManga = godDomain.some(domain => parsedUrl.hostname === domain || parsedUrl.hostname.endsWith('.' + domain));
+    const isGodManga = godDomain.some(domain => parsedUrl.hostname === domain || parsedUrl.hostname.endsWith('.' + domain) || parsedUrl.hostname.includes('webtoon'));
 
     if (isGodManga) {
       headers = {

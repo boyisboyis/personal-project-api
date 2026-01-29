@@ -1,13 +1,16 @@
-import { Controller, Get, Query, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { Controller, Get, Query, Param, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiQuery, ApiParam, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
 import { MangaService } from '@/manga/manga.service';
 import { WebsiteLastUpdatedDto, WebsiteLastUpdatedPaginatedDto, ChapterDetailsDto } from '@/manga/dto/last-updated.dto';
 import { MangaDetailsDto } from '@/manga/dto/manga-details.dto';
 import { CacheService } from '@/common/cache/cache.service';
+import { FirebaseAuthGuard } from '@/auth/guards/firebase-auth.guard';
 
 @ApiTags('Manga')
+@ApiBearerAuth()
+@UseGuards(FirebaseAuthGuard)
 @Controller('manga')
 export class MangaController {
   constructor(

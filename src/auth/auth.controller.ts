@@ -5,6 +5,7 @@ import { AuthService } from '@/auth/auth.service';
 import { LoginDto } from '@/auth/dto/login.dto';
 import { RegisterDto } from '@/auth/dto/register.dto';
 import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
+import { FirebaseAuthGuard } from '@/auth/guards/firebase-auth.guard';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -32,6 +33,19 @@ export class AuthController {
       id: req.user.id,
       email: req.user.email,
       name: req.user.name,
+    };
+  }
+
+  @ApiOperation({ summary: 'Get Firebase user profile' })
+  @ApiBearerAuth()
+  @UseGuards(FirebaseAuthGuard)
+  @Get('firebase-profile')
+  async getFirebaseProfile(@Request() req: any) {
+    return {
+      uid: req.user.uid,
+      email: req.user.email,
+      name: req.user.name,
+      picture: req.user.picture,
     };
   }
 }

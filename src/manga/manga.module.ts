@@ -15,6 +15,7 @@ import { MangaisekkaithaiAdapter } from '@/manga/adapters/mangaisekaithai-adapte
 import { MangaNekoAdapter } from '@/manga/adapters/manga-neko-adapter';
 import { GodDoujinAdapter } from '@/manga/adapters/god-doujin-adapter';
 import { ToonHunterAdapter } from '@/manga/adapters/toonhunter-adapter';
+import { GodhmanAdapter } from '@/manga/adapters/godhman-adapter';
 import { HealthController } from '@/common/health/health.controller';
 import { HealthService } from '@/common/health/health.service';
 
@@ -42,6 +43,7 @@ import { HealthService } from '@/common/health/health.service';
     MangaNekoAdapter,
     GodDoujinAdapter,
     ToonHunterAdapter,
+    GodhmanAdapter,
     HealthService,
   ],
   exports: [MangaService, AdapterRegistry, HealthService],

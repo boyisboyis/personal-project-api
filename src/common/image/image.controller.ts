@@ -65,6 +65,7 @@ export class ImageController {
         'god-doujin.com',
         'toonhunter.com',
         'img.rom-manga.com',
+        'godhman.net'
       ].concat(
         Array(10)
           .fill(1)

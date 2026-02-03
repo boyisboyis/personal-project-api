@@ -56,12 +56,7 @@ export class GodmangaAdapter extends BaseMangaAdapter {
       }
 
       // Try multiple URL patterns for GodManga
-      const urlPatterns = [
-        `${this.websiteUrl}/series/${identifier}/`,
-        `${this.websiteUrl}/manga/${identifier}/`,
-        `${this.websiteUrl}/${identifier}/`,
-        `${this.websiteUrl}/title/${identifier}/`,
-      ];
+      const urlPatterns = [`${this.websiteUrl}/series/${identifier}/`];
 
       const isRailway = process.env.RAILWAY_ENVIRONMENT === 'production';
 
@@ -72,7 +67,7 @@ export class GodmangaAdapter extends BaseMangaAdapter {
           const scrapingConfig = {
             ...this.getDefaultScrapingConfig(),
             delay: { min: 1000, max: 2000 },
-            waitForSelector: 'body', // More generic selector
+            waitForSelector: '#con3', // More generic selector
             timeout: isRailway ? 90000 : 30000,
           };
 
@@ -394,7 +389,7 @@ export class GodmangaAdapter extends BaseMangaAdapter {
             if (title) {
               const fullUrl = url ? (url.startsWith('http') ? url : `${window.location.origin}${url}`) : undefined;
               const mangaId = fullUrl ? extractSlugFromUrl(fullUrl) : `${websiteKey}-${index + 1}`;
-               const chapterMatch = chapterEl?.textContent?.match(/\d+\.?\d*/) || [];
+              const chapterMatch = chapterEl?.textContent?.match(/\d+\.?\d*/) || [];
 
               results.push({
                 id: mangaId,

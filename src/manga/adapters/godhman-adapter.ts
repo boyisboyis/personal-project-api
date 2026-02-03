@@ -340,6 +340,12 @@ export class GodhmanAdapter extends BaseMangaAdapter implements MangaScraperAdap
    * Extract chapter images from chapter page
    */
   async extractChapterImages(page: Page, chapterUrl: string): Promise<ChapterImageDto[]> {
+    page.on('console', async msg => {
+      const msgArgs = msg.args();
+      for (let i = 0; i < msgArgs.length; ++i) {
+        console.log(await msgArgs[i].jsonValue());
+      }
+    });
     return await page.evaluate(url => {
       try {
         const sources = Array.from(document.querySelectorAll('script'))
@@ -355,68 +361,82 @@ export class GodhmanAdapter extends BaseMangaAdapter implements MangaScraperAdap
         const images: ChapterImageDto[] = [];
 
         // Manga-neko.com specific selectors for chapter images
-        const imageSelectors = ['#readerarea > img'];
+        const imageSelectors = ['#readerarea > *'];
 
         imageSelectors.forEach(selector => {
           const imgElements = document.querySelectorAll(selector) as NodeListOf<HTMLImageElement>;
           imgElements.forEach((img, index) => {
-            const src = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || img.getAttribute('data-original');
-            if (src && !images.some(image => image.url === src)) {
-              // Check if this might be an encrypted/protected image
-              const isEncrypted =
-                img.classList.contains('encrypted') ||
-                img.classList.contains('protected') ||
-                img.hasAttribute('data-encrypted') ||
-                src.includes('encrypted') ||
-                src.includes('protected') ||
-                src.includes('scrambled');
+            if (img.nodeName === 'IMG') {
+              const src = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || img.getAttribute('data-original');
+              if (src && !images.some(image => image.url === src)) {
+                // Check if this might be an encrypted/protected image
+                const isEncrypted =
+                  img.classList.contains('encrypted') ||
+                  img.classList.contains('protected') ||
+                  img.hasAttribute('data-encrypted') ||
+                  src.includes('encrypted') ||
+                  src.includes('protected') ||
+                  src.includes('scrambled');
 
-              const image: ChapterImageDto = {
-                url: src,
-                type: isEncrypted ? 'canvas' : 'image',
-              };
+                const image: ChapterImageDto = {
+                  url: src,
+                  type: isEncrypted ? 'canvas' : 'image',
+                };
 
-              if (isEncrypted) {
-                const canvasId = `manga-neko-page-${index}-${Date.now()}`;
-                image.html = `<canvas id="${canvasId}" class="manga-page-canvas" style="max-width: 100%; height: auto;"></canvas>`;
-                image.script = `<script>
-                  (function() {
-                    const canvas = document.getElementById('${canvasId}');
-                    if (!canvas) return;
-                    
-                    const ctx = canvas.getContext('2d');
-                    const img = new Image();
-                    img.crossOrigin = 'anonymous';
-                    
-                    img.onload = function() {
-                      canvas.width = img.width;
-                      canvas.height = img.height;
-                      ctx.drawImage(img, 0, 0);
+                if (isEncrypted) {
+                  const canvasId = `manga-neko-page-${index}-${Date.now()}`;
+                  image.html = `<canvas id="${canvasId}" class="manga-page-canvas" style="max-width: 100%; height: auto;"></canvas>`;
+                  image.script = `<script>
+                    (function() {
+                      const canvas = document.getElementById('${canvasId}');
+                      if (!canvas) return;
                       
-                      // Add manga-neko specific decryption/descrambling logic here
-                      console.log('Loaded protected image for manga-neko:', '${src}');
-                    };
-                    
-                    img.onerror = function() {
-                      console.error('Failed to load image:', '${src}');
-                      ctx.fillStyle = '#ff6b6b';
-                      ctx.font = '16px Arial';
-                      ctx.textAlign = 'center';
-                      canvas.width = 400;
-                      canvas.height = 200;
-                      ctx.fillText('Image failed to load', canvas.width/2, canvas.height/2);
-                    };
-                    
-                    img.src = '${src}';
-                  })();
-                </script>`;
-              }
+                      const ctx = canvas.getContext('2d');
+                      const img = new Image();
+                      img.crossOrigin = 'anonymous';
+                      
+                      img.onload = function() {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+                        
+                        // Add manga-neko specific decryption/descrambling logic here
+                        console.log('Loaded protected image for manga-neko:', '${src}');
+                      };
+                      
+                      img.onerror = function() {
+                        console.error('Failed to load image:', '${src}');
+                        ctx.fillStyle = '#ff6b6b';
+                        ctx.font = '16px Arial';
+                        ctx.textAlign = 'center';
+                        canvas.width = 400;
+                        canvas.height = 200;
+                        ctx.fillText('Image failed to load', canvas.width/2, canvas.height/2);
+                      };
+                      
+                      img.src = '${src}';
+                    })();
+                  </script>`;
+                }
 
-              images.push(image);
+                images.push(image);
+              }
+            }
+            if (img.nodeName === 'DIV' && img.className.includes('displayImage')) {
+              const scriptElement = imgElements[index + 1] as unknown as HTMLScriptElement;
+              if (scriptElement && scriptElement.nodeName === 'SCRIPT') {
+                const image: ChapterImageDto = {
+                  url: 'xxxxxxxxxxxxxxxxxxxxxxxx', // Placeholder URL
+                  type: 'image-script',
+                  html: img.outerHTML || '',
+                  // script: (scriptElement.textContent || '').replace(/eval\(/g, '').replace(/\{\}\)\)\\n/g, '{})'),
+                  script: (scriptElement.textContent || ''),
+                };
+                images.push(image);
+              }
             }
           });
         });
-
         // Filter out ads and unwanted images
         return images.filter(image => {
           const url = image.url;

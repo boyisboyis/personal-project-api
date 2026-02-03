@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export type ImageType = 'image' | 'canvas';
+export type ImageType = 'image' | 'canvas' | 'image-script';
 
 export class ChapterImageDto {
   @ApiProperty({
@@ -11,8 +11,8 @@ export class ChapterImageDto {
 
   @ApiProperty({
     example: 'image',
-    enum: ['image', 'canvas'],
-    description: 'Type of content: image (direct image) or canvas (requires rendering)',
+    enum: ['image', 'canvas', 'image-script'],
+    description: 'Type of content: image (direct image), canvas (requires rendering), or image-script (image with associated script)',
   })
   type: ImageType;
 

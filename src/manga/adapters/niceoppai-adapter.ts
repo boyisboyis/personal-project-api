@@ -3,6 +3,7 @@ import { BaseMangaAdapter } from '@/manga/adapters/base/base-manga-adapter';
 import { MangaItemDto, ChapterDto } from '@/manga/dto/last-updated.dto';
 import { MangaPuppeteerService } from '@/manga/services/manga-puppeteer-improved.service';
 import { Page } from 'puppeteer';
+import { ChapterImageDto } from '../dto/chapter-image.dto';
 
 @Injectable()
 export class NiceoppaiAdapter extends BaseMangaAdapter {
@@ -296,12 +297,12 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
           try {
             const chapterTitleEl = chapterEl.querySelector('.val');
             const chapterTitle = chapterTitleEl?.textContent?.trim();
-            const chapterUrlEl = chapterEl.querySelector('a.lst')
+            const chapterUrlEl = chapterEl.querySelector('a.lst');
             const chapterUrl = chapterUrlEl?.getAttribute('href');
 
             if (chapterTitle && chapterUrl) {
               // Extract chapter number from title or URL
-              const chapterNumberMatch = chapterTitle.match(/\d+/)
+              const chapterNumberMatch = chapterTitle.match(/\d+/);
               const chapterNumber = chapterNumberMatch ? parseFloat(chapterNumberMatch[0]) : index + 1;
 
               // Extract chapter ID from chapter URL
@@ -342,30 +343,41 @@ export class NiceoppaiAdapter extends BaseMangaAdapter {
   /**
    * Extract chapter images from chapter page
    */
-  async extractChapterImages(page: Page, chapterUrl: string): Promise<string[]> {
+  async extractChapterImages(page: Page, chapterUrl: string): Promise<ChapterImageDto[]> {
     return await page.evaluate(() => {
       try {
-        const images: string[] = [];
-        
+        const images: ChapterImageDto[] = [];
+
         // Common selectors for manga reader pages
-        const imageSelectors = [
-          '#image-container img'
-        ];
+        const imageSelectors = ['#image-container center'];
 
         imageSelectors.forEach(selector => {
-          const imgElements = document.querySelectorAll(selector) as NodeListOf<HTMLImageElement>;
-          imgElements.forEach(img => {
-            const src = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
-            if (src && !images.includes(src)) {
-              images.push(src);
+          const centerElement = document.querySelectorAll(selector) as NodeListOf<HTMLElement>;
+          centerElement.forEach(center => {
+            const img = center.querySelector('img') as HTMLImageElement;
+            if (img) {
+              const url = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
+              const scriptElement = center.querySelector('script');
+              const div = center.querySelector('& > div');
+              if (div) {
+                div.innerHTML = ''; // Clear div content to avoid duplication
+              }
+              const image: ChapterImageDto = {
+                url: url || '', // Placeholder URL
+                type: scriptElement ? 'image-script' : 'image',
+                html: div ? div.outerHTML : undefined,
+                // script: (scriptElement.textContent || '').replace(/eval\(/g, '').replace(/\{\}\)\)\\n/g, '{})'),
+                script: scriptElement ? scriptElement.textContent || '' : '',
+              };
+              images.push(image);
             }
           });
         });
 
         // Filter out small images (likely ads or icons)
-        return images.filter(src => {
+        return images.filter(image => {
           // Basic filtering - exclude very small images or common ad patterns
-          return !src.includes('ads') && !src.includes('banner') && !src.includes('logo');
+          return !image.url.includes('ads') && !image.url.includes('banner') && !image.url.includes('logo');
         });
       } catch (error) {
         console.error('Error extracting chapter images:', error);

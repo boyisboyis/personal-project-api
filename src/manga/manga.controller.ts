@@ -15,7 +15,7 @@ import { FirebaseAuthGuard } from '@/auth/guards/firebase-auth.guard';
 export class MangaController {
   constructor(
     private readonly mangaService: MangaService,
-    private readonly cacheService: CacheService,
+    private readonly cacheService: CacheService
   ) {}
 
   @Get('webs')
@@ -66,10 +66,10 @@ export class MangaController {
   @Get(':web/last-updated')
   async getLastUpdatedByPath(@Param('web') webKey: string, @Query('page') page: string = '1'): Promise<WebsiteLastUpdatedPaginatedDto> {
     const pageNum = parseInt(page, 10) || 1;
-    
+
     // Create cache key with web and page
     const cacheKey = `manga-last-updated:${webKey}:page-${pageNum}`;
-    
+
     // Try to get from cache first
     return this.cacheService.getOrSet(
       cacheKey,
@@ -105,7 +105,7 @@ export class MangaController {
   async getMangaDetails(@Param('web') webKey: string, @Param('mangaKey') mangaKey: string): Promise<MangaDetailsDto | null> {
     // Create cache key with web and mangaKey
     const cacheKey = `manga-details:${webKey}:${mangaKey}`;
-    
+
     // Try to get from cache first
     return this.cacheService.getOrSet(
       cacheKey,
@@ -147,7 +147,11 @@ export class MangaController {
   async getChapterDetails(@Param('web') webKey: string, @Param('mangaKey') mangaKey: string, @Param('chapterId') chapterId: string): Promise<ChapterDetailsDto | null> {
     // Create cache key with web, mangaKey and chapterId
     const cacheKey = `manga-chapter:${webKey}:${mangaKey}:${chapterId}`;
-    
+    const cacheChapterDetail = await this.cacheService.get<ChapterDetailsDto>(cacheKey);
+    if (cacheChapterDetail) {
+      return cacheChapterDetail;
+    }
+
     // Try to get from cache first
     return this.cacheService.getOrSet(
       cacheKey,

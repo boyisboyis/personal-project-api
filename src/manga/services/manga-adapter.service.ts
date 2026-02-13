@@ -283,6 +283,10 @@ export class MangaAdapterService {
       });
 
       this.logger.log(`Successfully fetched chapter details for ${chapterId} from ${adapter.websiteName} in ${duration}ms`);
+      if (images.length === 0) {
+        this.logger.warn(`No images found for chapter ${chapterId} from ${adapter.websiteName}`);
+        throw new Error('No images found for this chapter');
+      }
 
       // Return chapter with additional manga context, proxied images, and navigation
       return {
